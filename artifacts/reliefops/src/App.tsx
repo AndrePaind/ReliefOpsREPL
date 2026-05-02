@@ -19,7 +19,6 @@ import RequestCreate from "@/pages/RequestCreate";
 import RequestDetail from "@/pages/RequestDetail";
 import TransferList from "@/pages/TransferList";
 import TransferDetail from "@/pages/TransferDetail";
-import VolunteerList from "@/pages/VolunteerList";
 import ActivityLog from "@/pages/ActivityLog";
 import Onboarding from "@/pages/Onboarding";
 import TeamManagement from "@/pages/TeamManagement";
@@ -190,7 +189,6 @@ function ClerkProviderWithRoutes() {
             <Route path="/requests"><ProtectedRoute component={RequestList} /></Route>
             <Route path="/transfers/:transferId"><ProtectedRoute component={TransferDetail} /></Route>
             <Route path="/transfers"><ProtectedRoute component={TransferList} /></Route>
-            <Route path="/volunteers"><ProtectedRoute component={VolunteerList} /></Route>
             <Route path="/activity"><ProtectedRoute component={ActivityLog} /></Route>
             <Route path="/board"><ProtectedRoute component={SharedBoard} /></Route>
             <Route path="/team"><ProtectedRoute component={TeamManagement} /></Route>

@@ -5,7 +5,6 @@ import {
   MapPin,
   Package,
   Truck,
-  Users,
   Activity,
   Globe,
   UserCog,
@@ -37,7 +36,6 @@ const privateNavItems = [
   { href: "/hubs", label: "Hubs & Stock", icon: MapPin },
   { href: "/requests", label: "Supply Requests", icon: Package },
   { href: "/transfers", label: "Transfers", icon: Truck },
-  { href: "/volunteers", label: "Volunteers", icon: Users },
   { href: "/activity", label: "Activity Log", icon: Activity },
 ];
 
