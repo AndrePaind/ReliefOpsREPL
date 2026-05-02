@@ -25,6 +25,7 @@ import Onboarding from "@/pages/Onboarding";
 import TeamManagement from "@/pages/TeamManagement";
 import SharedBoard from "@/pages/SharedBoard";
 import Settings from "@/pages/Settings";
+import Demo from "@/pages/Demo";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = publishableKeyFromHost(
@@ -194,6 +195,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/board"><ProtectedRoute component={SharedBoard} /></Route>
             <Route path="/team"><ProtectedRoute component={TeamManagement} /></Route>
             <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
+            <Route path="/demo"><ProtectedRoute component={Demo} /></Route>
 
             <Route component={NotFound} />
           </Switch>

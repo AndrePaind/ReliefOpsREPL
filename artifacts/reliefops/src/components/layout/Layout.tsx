@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Settings,
   Check,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -42,6 +43,10 @@ const privateNavItems = [
 
 const communityNavItems = [
   { href: "/board", label: "Shared Board", icon: Globe },
+];
+
+const learnNavItems = [
+  { href: "/demo", label: "Demo & Guide", icon: BookOpen },
 ];
 
 const adminNavItems = [
@@ -136,6 +141,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {(org?.myRole === "Admin" || org?.myRole === "Coordinator") && (
           <NavSection title="Management" items={adminNavItems} />
         )}
+        <NavSection title="Learn" items={learnNavItems} />
       </nav>
 
       <div className="p-3 border-t border-slate-100 shrink-0">
