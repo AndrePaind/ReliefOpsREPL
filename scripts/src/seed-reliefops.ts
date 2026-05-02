@@ -361,7 +361,308 @@ async function seed() {
   }
   console.log("  Added 5 demo team members");
 
-  console.log("Seed complete! Demo org invite code: SUDAN1");
+  console.log("Seed complete! Demo org: UNICEF Sudan (SUDAN1)");
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // MISSION 2 — MSF Syria
+  // ════════════════════════════════════════════════════════════════════════════
+  console.log("\nSeeding MSF Syria demo data…");
+
+  const SYRIA_ORG_NAME = "MSF Syria";
+  let [syriaOrg] = await db.select().from(organizationsTable).then((rows) => rows.filter((r) => r.name === SYRIA_ORG_NAME));
+  if (!syriaOrg) {
+    [syriaOrg] = await db.insert(organizationsTable).values({
+      name: SYRIA_ORG_NAME,
+      description: "Médecins Sans Frontières — Syria emergency medical and logistics operations",
+      inviteCode: "SYRIA1",
+      createdBy: "seed",
+    }).returning();
+    console.log(`  Created org: ${SYRIA_ORG_NAME} (invite: SYRIA1)`);
+  }
+
+  // ── Syria Hubs ─────────────────────────────────────────────────────────────
+  const syriaHubDefs = [
+    {
+      name: "Damascus Coordination Hub",
+      address: "Mazzeh District, Damascus, Syria",
+      lat: 33.5138,
+      lng: 36.2765,
+      imageUrl: "https://images.unsplash.com/photo-1601394027894-ef5b9be3023a?w=800&q=80",
+    },
+    {
+      name: "Aleppo Field Hospital",
+      address: "Al-Masharqa, Aleppo, Syria",
+      lat: 36.2021,
+      lng: 37.1343,
+      imageUrl: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=800&q=80",
+    },
+    {
+      name: "Idlib Relief Base",
+      address: "Bab al-Hawa Crossing Area, Idlib, Syria",
+      lat: 35.9284,
+      lng: 36.6277,
+      imageUrl: "https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=800&q=80",
+    },
+    {
+      name: "Raqqa Distribution Point",
+      address: "Al-Rashid District, Raqqa, Syria",
+      lat: 35.9519,
+      lng: 39.0130,
+      imageUrl: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800&q=80",
+    },
+  ];
+
+  const syriaHubs: typeof hubsTable.$inferSelect[] = [];
+  for (const def of syriaHubDefs) {
+    let [hub] = await db.select().from(hubsTable).then((rows) => rows.filter((r) => r.name === def.name && r.orgId === syriaOrg.id));
+    if (!hub) {
+      [hub] = await db.insert(hubsTable).values({ ...def, orgId: syriaOrg.id }).returning();
+    }
+    syriaHubs.push(hub);
+  }
+  const sHub = (name: string) => syriaHubs.find((h) => h.name === name)!;
+  const sdmsc = sHub("Damascus Coordination Hub");
+  const salep = sHub("Aleppo Field Hospital");
+  const sidlb = sHub("Idlib Relief Base");
+  const sraqq = sHub("Raqqa Distribution Point");
+
+  // ── Syria Stock ────────────────────────────────────────────────────────────
+  const expIn45 = new Date(Date.now() + 45 * 86400000).toISOString().slice(0, 10);
+  const expIn15 = new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10);
+  const expIn7  = new Date(Date.now() + 7  * 86400000).toISOString().slice(0, 10);
+
+  const syriaStockDefs: Array<{ hub: typeof sdmsc; itemName: string; quantity: number; expiry?: string }> = [
+    // Damascus — large coordination hub
+    { hub: sdmsc, itemName: "Amoxicillin 500mg",       quantity: 300, expiry: expIn45 },
+    { hub: sdmsc, itemName: "Ibuprofen 400mg",          quantity: 200, expiry: expIn45 },
+    { hub: sdmsc, itemName: "Insulin (10ml vial)",      quantity: 40,  expiry: expIn15 },
+    { hub: sdmsc, itemName: "Sterile Bandages",         quantity: 120, expiry: expIn45 },
+    { hub: sdmsc, itemName: "Trauma First Aid Kit",     quantity: 35,  expiry: expIn45 },
+    { hub: sdmsc, itemName: "Disposable Gloves (M)",    quantity: 150 },
+    { hub: sdmsc, itemName: "Rice (5kg bag)",           quantity: 600 },
+    { hub: sdmsc, itemName: "Canned Lentils",           quantity: 400 },
+    { hub: sdmsc, itemName: "Bottled Water (1.5L)",     quantity: 1500 },
+    { hub: sdmsc, itemName: "Thermal Blankets",         quantity: 250 },
+    { hub: sdmsc, itemName: "Hygiene Kit",              quantity: 180 },
+    // Aleppo — field hospital, medical-heavy
+    { hub: salep, itemName: "Amoxicillin 500mg",       quantity: 80,  expiry: expIn45 },
+    { hub: salep, itemName: "Oral Rehydration Salts",  quantity: 200 },
+    { hub: salep, itemName: "Ibuprofen 400mg",          quantity: 5,   expiry: expIn7  },
+    { hub: salep, itemName: "Insulin (10ml vial)",      quantity: 3,   expiry: expIn15 },
+    { hub: salep, itemName: "Sterile Bandages",         quantity: 20,  expiry: expIn45 },
+    { hub: salep, itemName: "Trauma First Aid Kit",     quantity: 6,   expiry: expIn45 },
+    { hub: salep, itemName: "Disposable Gloves (M)",    quantity: 60 },
+    { hub: salep, itemName: "Thermal Blankets",         quantity: 80 },
+    // Idlib — border crossing, high throughput
+    { hub: sidlb, itemName: "Rice (5kg bag)",           quantity: 900 },
+    { hub: sidlb, itemName: "High-Energy Biscuits",     quantity: 400, expiry: expIn45 },
+    { hub: sidlb, itemName: "Canned Lentils",           quantity: 600 },
+    { hub: sidlb, itemName: "Water Purification Tablets", quantity: 700 },
+    { hub: sidlb, itemName: "Soap (bar)",               quantity: 500 },
+    { hub: sidlb, itemName: "Sanitary Pads",            quantity: 200 },
+    { hub: sidlb, itemName: "Hygiene Kit",              quantity: 100 },
+    { hub: sidlb, itemName: "Thermal Blankets",         quantity: 350 },
+    // Raqqa — remote, critically low on several items
+    { hub: sraqq, itemName: "Amoxicillin 500mg",       quantity: 12,  expiry: expIn45 },
+    { hub: sraqq, itemName: "Oral Rehydration Salts",  quantity: 30 },
+    { hub: sraqq, itemName: "Rice (5kg bag)",           quantity: 45 },
+    { hub: sraqq, itemName: "Bottled Water (1.5L)",     quantity: 80 },
+    { hub: sraqq, itemName: "Sterile Bandages",         quantity: 8,   expiry: expIn7  },
+    { hub: sraqq, itemName: "Thermal Blankets",         quantity: 40 },
+  ];
+
+  for (const s of syriaStockDefs) {
+    if (!s.hub) continue;
+    const item = insertedItems.find((i) => i.name === s.itemName);
+    if (!item) continue;
+    const exists = await db.select().from(hubStockTable)
+      .then((rows) => rows.find((r) => r.hubId === s.hub.id && r.itemId === item.id));
+    if (exists) continue;
+    await db.insert(hubStockTable).values({ hubId: s.hub.id, itemId: item.id, quantity: s.quantity, expiryDate: s.expiry ?? null });
+  }
+  console.log("  Seeded Syria hub stock");
+
+  // ── Syria Volunteers ───────────────────────────────────────────────────────
+  const syriaVolDefs = [
+    { fullName: "Nour Al-Rashid",    email: "nour@example.com",    lat: 33.51, lng: 36.28, hasVehicle: true,  availabilityStatus: "Available" },
+    { fullName: "Khalil Mansour",    email: "khalil@example.com",  lat: 36.20, lng: 37.13, hasVehicle: true,  availabilityStatus: "Busy"      },
+    { fullName: "Layla Yousef",      email: "layla@example.com",   lat: 35.93, lng: 36.63, hasVehicle: false, availabilityStatus: "Available" },
+    { fullName: "Hassan Al-Ahmad",   email: "hassan@example.com",  lat: 35.93, lng: 36.62, hasVehicle: true,  availabilityStatus: "Available" },
+    { fullName: "Rima Barakat",      email: "rima@example.com",    lat: 35.95, lng: 39.01, hasVehicle: false, availabilityStatus: "Available" },
+    { fullName: "Tariq Nassar",      email: "tariq.s@example.com", lat: 33.50, lng: 36.27, hasVehicle: true,  availabilityStatus: "Offline"   },
+  ] as const;
+
+  const syriaVols: typeof volunteersTable.$inferSelect[] = [];
+  for (const v of syriaVolDefs) {
+    const exists = await db.select().from(volunteersTable)
+      .then((rows) => rows.find((r) => r.email === v.email && r.orgId === syriaOrg.id));
+    if (exists) { syriaVols.push(exists); continue; }
+    const [vol] = await db.insert(volunteersTable).values({ ...v, orgId: syriaOrg.id } as any).returning();
+    syriaVols.push(vol);
+  }
+  const sVolByName = (name: string) => syriaVols.find((v) => v.fullName === name)!;
+
+  // ── Syria Requests ─────────────────────────────────────────────────────────
+  const sReq1Exists = await db.select().from(requestsTable)
+    .then((rows) => rows.find((r) => r.requestingHubId === sraqq.id && r.priority === "Critical" && r.orgId === syriaOrg.id));
+
+  let sReq1: typeof requestsTable.$inferSelect;
+  if (sReq1Exists) {
+    sReq1 = sReq1Exists;
+  } else {
+    [sReq1] = await db.insert(requestsTable).values({
+      orgId: syriaOrg.id,
+      requestingHubId: sraqq.id,
+      priority: "Critical",
+      status: "Open",
+      notes: "Raqqa field point critically low on medicines and food. Road access intermittent. 1,400+ displaced families in camp vicinity.",
+    }).returning();
+    await db.insert(requestItemsTable).values([
+      { requestId: sReq1.id, itemId: itemByName("Amoxicillin 500mg").id,    quantityNeeded: 100 },
+      { requestId: sReq1.id, itemId: itemByName("Sterile Bandages").id,     quantityNeeded: 80  },
+      { requestId: sReq1.id, itemId: itemByName("Rice (5kg bag)").id,       quantityNeeded: 200 },
+      { requestId: sReq1.id, itemId: itemByName("Bottled Water (1.5L)").id, quantityNeeded: 500 },
+    ]);
+  }
+
+  const sReq2Exists = await db.select().from(requestsTable)
+    .then((rows) => rows.find((r) => r.requestingHubId === salep.id && r.priority === "Urgent" && r.orgId === syriaOrg.id));
+
+  let sReq2: typeof requestsTable.$inferSelect;
+  if (sReq2Exists) {
+    sReq2 = sReq2Exists;
+  } else {
+    [sReq2] = await db.insert(requestsTable).values({
+      orgId: syriaOrg.id,
+      requestingHubId: salep.id,
+      priority: "Urgent",
+      status: "Assigned",
+      notes: "Aleppo field hospital running low on surgical supplies and insulin. Expecting casualties from north Aleppo within 48h.",
+    }).returning();
+    await db.insert(requestItemsTable).values([
+      { requestId: sReq2.id, itemId: itemByName("Ibuprofen 400mg").id,       quantityNeeded: 100 },
+      { requestId: sReq2.id, itemId: itemByName("Insulin (10ml vial)").id,   quantityNeeded: 20  },
+      { requestId: sReq2.id, itemId: itemByName("Trauma First Aid Kit").id,  quantityNeeded: 15  },
+    ]);
+  }
+
+  const sReq3Exists = await db.select().from(requestsTable)
+    .then((rows) => rows.find((r) => r.requestingHubId === sidlb.id && r.priority === "Medium" && r.orgId === syriaOrg.id));
+
+  if (!sReq3Exists) {
+    const [sReq3] = await db.insert(requestsTable).values({
+      orgId: syriaOrg.id,
+      requestingHubId: sidlb.id,
+      priority: "Medium",
+      status: "Draft",
+      notes: "Idlib border crossing anticipates 600 new arrivals this week. Requesting hygiene and shelter replenishment.",
+    }).returning();
+    await db.insert(requestItemsTable).values([
+      { requestId: sReq3.id, itemId: itemByName("Hygiene Kit").id,           quantityNeeded: 100 },
+      { requestId: sReq3.id, itemId: itemByName("Thermal Blankets").id,      quantityNeeded: 200 },
+      { requestId: sReq3.id, itemId: itemByName("Sanitary Pads").id,         quantityNeeded: 120 },
+    ]);
+  }
+
+  // ── Syria Transfer ─────────────────────────────────────────────────────────
+  const sTransferExists = await db.select().from(transfersTable)
+    .then((rows) => rows.find((r) => r.requestId === sReq2.id && r.orgId === syriaOrg.id));
+
+  if (!sTransferExists) {
+    const [sTransfer] = await db.insert(transfersTable).values({
+      orgId: syriaOrg.id,
+      requestId: sReq2.id,
+      fromHubId: sdmsc.id,
+      toHubId: salep.id,
+      status: "In Transit",
+      etaMinutes: 300,
+    }).returning();
+    await db.insert(transferItemsTable).values([
+      { transferId: sTransfer.id, itemId: itemByName("Ibuprofen 400mg").id,      quantity: 100 },
+      { transferId: sTransfer.id, itemId: itemByName("Insulin (10ml vial)").id,  quantity: 15  },
+      { transferId: sTransfer.id, itemId: itemByName("Trauma First Aid Kit").id, quantity: 10  },
+    ]);
+    const nour = sVolByName("Nour Al-Rashid");
+    const khalil = sVolByName("Khalil Mansour");
+    if (nour)   await db.insert(tasksTable).values({ orgId: syriaOrg.id, transferId: sTransfer.id, volunteerId: nour.id,   type: "Pickup",            status: "Completed"   });
+    if (khalil) await db.insert(tasksTable).values({ orgId: syriaOrg.id, transferId: sTransfer.id, volunteerId: khalil.id, type: "Delivery/Transfer", status: "In Progress" });
+  }
+
+  // ── Syria Activity Log ─────────────────────────────────────────────────────
+  const sActCount = await db.select().from(activityLogTable)
+    .then((rows) => rows.filter((r) => r.orgId === syriaOrg.id).length);
+
+  if (sActCount === 0) {
+    await db.insert(activityLogTable).values([
+      { orgId: syriaOrg.id, entityType: "request",  entityId: sReq1.id, action: "created",        payload: { priority: "Critical", hub: "Raqqa" } },
+      { orgId: syriaOrg.id, entityType: "request",  entityId: sReq2.id, action: "created",        payload: { priority: "Urgent",   hub: "Aleppo" } },
+      { orgId: syriaOrg.id, entityType: "request",  entityId: sReq2.id, action: "status_changed", payload: { status: "Assigned" } },
+      { orgId: syriaOrg.id, entityType: "transfer", entityId: "syria-t1", action: "created",      payload: { from: "Damascus", to: "Aleppo" } },
+      { orgId: syriaOrg.id, entityType: "transfer", entityId: "syria-t1", action: "dispatched",   payload: { fromHub: "Damascus Coordination Hub" } },
+    ]);
+  }
+
+  // ── Syria Board Posts ──────────────────────────────────────────────────────
+  const sPostCount = await db.select().from(boardPostsTable)
+    .then((rows) => rows.filter((r) => r.orgId === syriaOrg.id).length);
+
+  if (sPostCount === 0) {
+    await db.insert(boardPostsTable).values([
+      {
+        orgId: syriaOrg.id,
+        orgName: syriaOrg.name,
+        type: "Need",
+        title: "Critical: antibiotics and trauma kits needed at Raqqa",
+        content: "Raqqa field point is running dangerously low. Road conditions unpredictable — air or alternative corridor preferred. Contact us urgently.",
+        itemName: "Amoxicillin 500mg",
+        quantity: 100,
+        location: "Raqqa Distribution Point, Syria",
+        status: "Active",
+        createdBy: "seed",
+      },
+      {
+        orgId: syriaOrg.id,
+        orgName: syriaOrg.name,
+        type: "Availability",
+        title: "Surplus blankets and food stocks at Idlib — available for cross-org transfer",
+        content: "Idlib border base has received a large donation. We can spare 150 thermal blankets and 200 bags of rice. First-come basis — message our Damascus hub.",
+        itemName: "Thermal Blankets",
+        quantity: 150,
+        location: "Idlib Relief Base, Syria",
+        status: "Active",
+        createdBy: "seed",
+      },
+      {
+        orgId: syriaOrg.id,
+        orgName: syriaOrg.name,
+        type: "Announcement",
+        title: "M5 highway Damascus–Aleppo: confirmed operational window 07:00–13:00",
+        content: "Security assessment confirms M5 is passable. We will run a joint convoy Thursday at 07:00. Any NGOs with cargo to move north, coordinate with our Damascus hub before Wednesday.",
+        location: "M5 Highway, Damascus to Aleppo",
+        status: "Active",
+        createdBy: "seed",
+      },
+    ]);
+  }
+
+  // ── Syria Demo Team Members ────────────────────────────────────────────────
+  const syriaDemoMembers = [
+    { userId: "demo:lena.hartmann",  email: "l.hartmann@msf.org",  fullName: "Lena Hartmann",  role: "Admin"       as const },
+    { userId: "demo:ali.karimi",     email: "a.karimi@msf.org",    fullName: "Ali Karimi",     role: "Coordinator" as const },
+    { userId: "demo:sofia.reyes",    email: "s.reyes@msf.org",     fullName: "Sofia Reyes",    role: "Coordinator" as const },
+    { userId: "demo:marc.dubois",    email: "m.dubois@msf.org",    fullName: "Marc Dubois",    role: "Coordinator" as const },
+    { userId: "demo:hana.yamamoto",  email: "h.yamamoto@msf.org",  fullName: "Hana Yamamoto",  role: "Viewer"      as const },
+  ];
+
+  for (const m of syriaDemoMembers) {
+    const exists = await db.select().from(orgMembersTable)
+      .then((rows) => rows.find((r) => r.userId === m.userId && r.orgId === syriaOrg.id));
+    if (!exists) {
+      await db.insert(orgMembersTable).values({ ...m, orgId: syriaOrg.id });
+    }
+  }
+  console.log("  Added 5 Syria demo team members");
+  console.log("Seed complete! MSF Syria invite code: SYRIA1");
 }
 
 seed().catch((e) => { console.error(e); process.exit(1); });
