@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { useUser } from "@clerk/react";
+import { useUser, useClerk } from "@clerk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, Users, ArrowRight, LogIn, Globe } from "lucide-react";
+import { Building2, Users, ArrowRight, LogIn, Globe, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ type Mode = "choose" | "create" | "join";
 
 export default function Onboarding() {
   const { user } = useUser();
+  const { signOut } = useClerk();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>("choose");
   const [orgName, setOrgName] = useState("");
@@ -161,6 +162,22 @@ export default function Onboarding() {
             </div>
           </div>
         )}
+
+        {/* Footer — sign out / switch account */}
+        <div className="mt-8 pt-6 border-t border-slate-200 text-center">
+          {user && (
+            <p className="text-sm text-slate-500 mb-3">
+              Signed in as <span className="font-medium text-slate-700">{user.primaryEmailAddress?.emailAddress}</span>
+            </p>
+          )}
+          <button
+            onClick={() => signOut({ redirectUrl: "/" })}
+            className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-700 transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Sign out / use a different account
+          </button>
+        </div>
       </div>
     </div>
   );
