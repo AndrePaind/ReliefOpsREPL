@@ -3,20 +3,40 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ReliefOps API — crisis logistics for NGOs
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: hubs
+    description: Hub operations
+  - name: items
+    description: Item operations
+  - name: stock
+    description: Hub stock operations
+  - name: requests
+    description: Supply request operations
+  - name: transfers
+    description: Transfer operations
+  - name: volunteers
+    description: Volunteer operations
+  - name: tasks
+    description: Task assignment operations
+  - name: activity
+    description: Activity log operations
+  - name: dashboard
+    description: Dashboard summary operations
+  - name: csv
+    description: CSV import operations
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +44,668 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ─── Hubs ───────────────────────────────────────────────────────────────────
+  /hubs:
+    get:
+      operationId: listHubs
+      tags: [hubs]
+      summary: List all hubs
+      responses:
+        "200":
+          description: List of hubs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Hub"
+    post:
+      operationId: createHub
+      tags: [hubs]
+      summary: Create a hub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateHubBody"
+      responses:
+        "201":
+          description: Created hub
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hub"
+
+  /hubs/{hubId}:
+    get:
+      operationId: getHub
+      tags: [hubs]
+      summary: Get hub by ID
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Hub detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hub"
+    patch:
+      operationId: updateHub
+      tags: [hubs]
+      summary: Update hub
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateHubBody"
+      responses:
+        "200":
+          description: Updated hub
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Hub"
+
+  # ─── Hub Stock ───────────────────────────────────────────────────────────────
+  /hubs/{hubId}/stock:
+    get:
+      operationId: getHubStock
+      tags: [stock]
+      summary: Get all stock entries for a hub
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Stock entries with item details
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockEntry"
+    post:
+      operationId: upsertHubStock
+      tags: [stock]
+      summary: Create or update stock for a hub
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertStockBody"
+      responses:
+        "200":
+          description: Updated stock entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockEntry"
+
+  /hubs/{hubId}/stock/{stockId}:
+    patch:
+      operationId: updateStockEntry
+      tags: [stock]
+      summary: Update a specific stock entry
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stockId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStockBody"
+      responses:
+        "200":
+          description: Updated stock entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockEntry"
+    delete:
+      operationId: deleteStockEntry
+      tags: [stock]
+      summary: Delete a stock entry
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stockId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  # ─── Items ──────────────────────────────────────────────────────────────────
+  /items:
+    get:
+      operationId: listItems
+      tags: [items]
+      summary: List all items
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+    post:
+      operationId: createItem
+      tags: [items]
+      summary: Create an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemBody"
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+  /items/{itemId}:
+    get:
+      operationId: getItem
+      tags: [items]
+      summary: Get item by ID
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+    patch:
+      operationId: updateItem
+      tags: [items]
+      summary: Update item
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateItemBody"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+  # ─── Requests ────────────────────────────────────────────────────────────────
+  /requests:
+    get:
+      operationId: listRequests
+      tags: [requests]
+      summary: List all supply requests
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: priority
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupplyRequest"
+    post:
+      operationId: createRequest
+      tags: [requests]
+      summary: Create a supply request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRequestBody"
+      responses:
+        "201":
+          description: Created request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplyRequest"
+
+  /requests/{requestId}:
+    get:
+      operationId: getRequest
+      tags: [requests]
+      summary: Get request detail
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Request with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplyRequestDetail"
+    patch:
+      operationId: updateRequest
+      tags: [requests]
+      summary: Update request status/priority
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRequestBody"
+      responses:
+        "200":
+          description: Updated request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplyRequest"
+
+  /requests/{requestId}/matching-hubs:
+    get:
+      operationId: getMatchingHubs
+      tags: [requests]
+      summary: Get candidate hubs ranked by straight-line distance for a request
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ranked hub matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HubMatch"
+
+  # ─── Transfers ───────────────────────────────────────────────────────────────
+  /transfers:
+    get:
+      operationId: listTransfers
+      tags: [transfers]
+      summary: List all transfers
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: requestId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of transfers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transfer"
+    post:
+      operationId: createTransfer
+      tags: [transfers]
+      summary: Create a transfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransferBody"
+      responses:
+        "201":
+          description: Created transfer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+
+  /transfers/{transferId}:
+    get:
+      operationId: getTransfer
+      tags: [transfers]
+      summary: Get transfer detail
+      parameters:
+        - name: transferId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transfer detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransferDetail"
+    patch:
+      operationId: updateTransfer
+      tags: [transfers]
+      summary: Update transfer status (triggers stock reduction on Dispatched)
+      parameters:
+        - name: transferId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTransferBody"
+      responses:
+        "200":
+          description: Updated transfer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transfer"
+
+  # ─── Volunteers ──────────────────────────────────────────────────────────────
+  /volunteers:
+    get:
+      operationId: listVolunteers
+      tags: [volunteers]
+      summary: List volunteers with optional filters
+      parameters:
+        - name: availability
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: hasVehicle
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of volunteers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Volunteer"
+    post:
+      operationId: createVolunteer
+      tags: [volunteers]
+      summary: Create a volunteer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVolunteerBody"
+      responses:
+        "201":
+          description: Created volunteer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Volunteer"
+
+  /volunteers/{volunteerId}:
+    patch:
+      operationId: updateVolunteer
+      tags: [volunteers]
+      summary: Update volunteer
+      parameters:
+        - name: volunteerId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVolunteerBody"
+      responses:
+        "200":
+          description: Updated volunteer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Volunteer"
+
+  # ─── Tasks ───────────────────────────────────────────────────────────────────
+  /tasks:
+    get:
+      operationId: listTasks
+      tags: [tasks]
+      summary: List tasks with optional filters
+      parameters:
+        - name: volunteerId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: transferId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+    post:
+      operationId: createTask
+      tags: [tasks]
+      summary: Create and assign a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  /tasks/{taskId}:
+    patch:
+      operationId: updateTask
+      tags: [tasks]
+      summary: Update task status or assignment
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+
+  # ─── Activity Log ─────────────────────────────────────────────────────────────
+  /activity:
+    get:
+      operationId: listActivity
+      tags: [activity]
+      summary: Get activity log
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: entityType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityEntry"
+
+  # ─── Dashboard Summary (wow endpoint) ────────────────────────────────────────
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get global dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/low-stock:
+    get:
+      operationId: getLowStockAlerts
+      tags: [dashboard]
+      summary: Get items with critically low stock across all hubs
+      responses:
+        "200":
+          description: Low stock alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LowStockAlert"
+
+  # ─── CSV Import ───────────────────────────────────────────────────────────────
+  /stock/csv-import:
+    post:
+      operationId: importStockCsv
+      tags: [csv]
+      summary: Import stock from CSV rows
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CsvImportBody"
+      responses:
+        "200":
+          description: Import results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsvImportResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +716,717 @@ components:
       required:
         - status
 
+    # ─── Hub ─────────────────────────────────────────────────────────────────
+    Hub:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+          nullable: true
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - createdAt
+
+    CreateHubBody:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        imageUrl:
+          type: string
+      required:
+        - name
+
+    UpdateHubBody:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        imageUrl:
+          type: string
+
+    # ─── Item ─────────────────────────────────────────────────────────────────
+    Item:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+          enum: [Medicine, Food, Hygiene, "First Aid"]
+        barcode:
+          type: string
+          nullable: true
+        unit:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        tracksExpiry:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - category
+        - unit
+        - tracksExpiry
+        - createdAt
+
+    CreateItemBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+          enum: [Medicine, Food, Hygiene, "First Aid"]
+        barcode:
+          type: string
+        unit:
+          type: string
+        imageUrl:
+          type: string
+        tracksExpiry:
+          type: boolean
+      required:
+        - name
+        - category
+
+    UpdateItemBody:
+      type: object
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+          enum: [Medicine, Food, Hygiene, "First Aid"]
+        barcode:
+          type: string
+        unit:
+          type: string
+        imageUrl:
+          type: string
+        tracksExpiry:
+          type: boolean
+
+    # ─── Stock ────────────────────────────────────────────────────────────────
+    StockEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        hubId:
+          type: string
+        itemId:
+          type: string
+        item:
+          $ref: "#/components/schemas/Item"
+        quantity:
+          type: integer
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - hubId
+        - itemId
+        - item
+        - quantity
+        - updatedAt
+
+    UpsertStockBody:
+      type: object
+      properties:
+        itemId:
+          type: string
+        quantity:
+          type: integer
+        expiryDate:
+          type: string
+          format: date
+      required:
+        - itemId
+        - quantity
+
+    UpdateStockBody:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        expiryDate:
+          type: string
+          format: date
+
+    # ─── Supply Request ───────────────────────────────────────────────────────
+    SupplyRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        requestingHubId:
+          type: string
+        requestingHub:
+          $ref: "#/components/schemas/Hub"
+        priority:
+          type: string
+          enum: [Low, Medium, Urgent, Critical]
+        status:
+          type: string
+          enum: [Draft, Open, Assigned, Dispatched, Delivered]
+        notes:
+          type: string
+          nullable: true
+        createdBy:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requestingHubId
+        - requestingHub
+        - priority
+        - status
+        - createdAt
+
+    SupplyRequestDetail:
+      allOf:
+        - $ref: "#/components/schemas/SupplyRequest"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/RequestItem"
+            transfers:
+              type: array
+              items:
+                $ref: "#/components/schemas/Transfer"
+          required:
+            - items
+            - transfers
+
+    RequestItem:
+      type: object
+      properties:
+        id:
+          type: string
+        requestId:
+          type: string
+        itemId:
+          type: string
+        item:
+          $ref: "#/components/schemas/Item"
+        quantityNeeded:
+          type: integer
+      required:
+        - id
+        - requestId
+        - itemId
+        - item
+        - quantityNeeded
+
+    CreateRequestBody:
+      type: object
+      properties:
+        requestingHubId:
+          type: string
+        priority:
+          type: string
+          enum: [Low, Medium, Urgent, Critical]
+        status:
+          type: string
+          enum: [Draft, Open, Assigned, Dispatched, Delivered]
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId:
+                type: string
+              quantityNeeded:
+                type: integer
+            required:
+              - itemId
+              - quantityNeeded
+      required:
+        - requestingHubId
+        - priority
+
+    UpdateRequestBody:
+      type: object
+      properties:
+        priority:
+          type: string
+          enum: [Low, Medium, Urgent, Critical]
+        status:
+          type: string
+          enum: [Draft, Open, Assigned, Dispatched, Delivered]
+        notes:
+          type: string
+
+    HubMatch:
+      type: object
+      properties:
+        hub:
+          $ref: "#/components/schemas/Hub"
+        distanceKm:
+          type: number
+        availableItems:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId:
+                type: string
+              itemName:
+                type: string
+              availableQuantity:
+                type: integer
+              requestedQuantity:
+                type: integer
+            required:
+              - itemId
+              - itemName
+              - availableQuantity
+              - requestedQuantity
+        canFulfillAll:
+          type: boolean
+      required:
+        - hub
+        - distanceKm
+        - availableItems
+        - canFulfillAll
+
+    # ─── Transfer ─────────────────────────────────────────────────────────────
+    Transfer:
+      type: object
+      properties:
+        id:
+          type: string
+        requestId:
+          type: string
+        fromHubId:
+          type: string
+        fromHub:
+          $ref: "#/components/schemas/Hub"
+        toHubId:
+          type: string
+        toHub:
+          $ref: "#/components/schemas/Hub"
+        status:
+          type: string
+          enum: [Planned, Dispatched, Delivered]
+        etaMinutes:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - requestId
+        - fromHubId
+        - fromHub
+        - toHubId
+        - toHub
+        - status
+        - createdAt
+
+    TransferDetail:
+      allOf:
+        - $ref: "#/components/schemas/Transfer"
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/TransferItem"
+            tasks:
+              type: array
+              items:
+                $ref: "#/components/schemas/Task"
+          required:
+            - items
+            - tasks
+
+    TransferItem:
+      type: object
+      properties:
+        id:
+          type: string
+        transferId:
+          type: string
+        itemId:
+          type: string
+        item:
+          $ref: "#/components/schemas/Item"
+        quantity:
+          type: integer
+      required:
+        - id
+        - transferId
+        - itemId
+        - item
+        - quantity
+
+    CreateTransferBody:
+      type: object
+      properties:
+        requestId:
+          type: string
+        fromHubId:
+          type: string
+        toHubId:
+          type: string
+        etaMinutes:
+          type: integer
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId:
+                type: string
+              quantity:
+                type: integer
+            required:
+              - itemId
+              - quantity
+      required:
+        - requestId
+        - fromHubId
+        - toHubId
+        - items
+
+    UpdateTransferBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Planned, Dispatched, Delivered]
+        etaMinutes:
+          type: integer
+
+    # ─── Volunteer ────────────────────────────────────────────────────────────
+    Volunteer:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        lat:
+          type: number
+          nullable: true
+        lng:
+          type: number
+          nullable: true
+        hasVehicle:
+          type: boolean
+        availabilityStatus:
+          type: string
+          enum: [Available, Busy, Offline]
+        activeTasks:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - fullName
+        - hasVehicle
+        - availabilityStatus
+        - activeTasks
+        - createdAt
+
+    CreateVolunteerBody:
+      type: object
+      properties:
+        fullName:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        hasVehicle:
+          type: boolean
+        availabilityStatus:
+          type: string
+          enum: [Available, Busy, Offline]
+      required:
+        - fullName
+
+    UpdateVolunteerBody:
+      type: object
+      properties:
+        fullName:
+          type: string
+        lat:
+          type: number
+        lng:
+          type: number
+        hasVehicle:
+          type: boolean
+        availabilityStatus:
+          type: string
+          enum: [Available, Busy, Offline]
+
+    # ─── Task ─────────────────────────────────────────────────────────────────
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        transferId:
+          type: string
+          nullable: true
+        volunteerId:
+          type: string
+          nullable: true
+        volunteer:
+          $ref: "#/components/schemas/Volunteer"
+          nullable: true
+        type:
+          type: string
+          enum: [Pickup, "Delivery/Transfer", "Stock Count"]
+        status:
+          type: string
+          enum: [Open, Assigned, "In Progress", Done]
+        startsAt:
+          type: string
+          format: date-time
+          nullable: true
+        endsAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - status
+        - createdAt
+
+    CreateTaskBody:
+      type: object
+      properties:
+        transferId:
+          type: string
+        volunteerId:
+          type: string
+        type:
+          type: string
+          enum: [Pickup, "Delivery/Transfer", "Stock Count"]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+      required:
+        - type
+
+    UpdateTaskBody:
+      type: object
+      properties:
+        volunteerId:
+          type: string
+        status:
+          type: string
+          enum: [Open, Assigned, "In Progress", Done]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    # ─── Activity ─────────────────────────────────────────────────────────────
+    ActivityEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        actorId:
+          type: string
+          nullable: true
+        entityType:
+          type: string
+        entityId:
+          type: string
+        action:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - entityType
+        - entityId
+        - action
+        - createdAt
+
+    # ─── Dashboard ────────────────────────────────────────────────────────────
+    DashboardSummary:
+      type: object
+      properties:
+        totalHubs:
+          type: integer
+        urgentRequests:
+          type: integer
+        activeTransfers:
+          type: integer
+        availableVolunteers:
+          type: integer
+        lowStockCount:
+          type: integer
+        requestsByStatus:
+          type: object
+          additionalProperties:
+            type: integer
+        requestsByPriority:
+          type: object
+          additionalProperties:
+            type: integer
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEntry"
+      required:
+        - totalHubs
+        - urgentRequests
+        - activeTransfers
+        - availableVolunteers
+        - lowStockCount
+        - requestsByStatus
+        - requestsByPriority
+        - recentActivity
+
+    LowStockAlert:
+      type: object
+      properties:
+        hubId:
+          type: string
+        hubName:
+          type: string
+        itemId:
+          type: string
+        itemName:
+          type: string
+        category:
+          type: string
+        quantity:
+          type: integer
+        expiryDate:
+          type: string
+          format: date
+          nullable: true
+      required:
+        - hubId
+        - hubName
+        - itemId
+        - itemName
+        - category
+        - quantity
+
+    # ─── CSV Import ───────────────────────────────────────────────────────────
+    CsvImportBody:
+      type: object
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            properties:
+              hubName:
+                type: string
+              itemName:
+                type: string
+              category:
+                type: string
+              quantity:
+                type: integer
+              unit:
+                type: string
+              expiryDate:
+                type: string
+              barcode:
+                type: string
+            required:
+              - hubName
+              - itemName
+              - category
+              - quantity
+      required:
+        - rows
+
+    CsvImportResult:
+      type: object
+      properties:
+        imported:
+          type: integer
+        updated:
+          type: integer
+        skipped:
+          type: integer
+        duplicateWarnings:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+      required:
+        - imported
+        - updated
+        - skipped
+        - duplicateWarnings
+        - errors
