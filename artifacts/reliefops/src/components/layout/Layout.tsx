@@ -13,12 +13,22 @@ import {
   Menu,
   Building2,
   ChevronDown,
+  Settings,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useOrg } from "@/context/OrgContext";
 
 const privateNavItems = [
@@ -48,7 +58,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const { org } = useOrg();
+  const { org, allOrgs, switchOrg } = useOrg();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (href: string) =>
@@ -72,6 +82,40 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </div>
   );
 
+  const OrgSwitcher = () => {
+    if (!org) return null;
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="mx-3 mt-3 px-3 py-2 rounded-lg bg-orange-50 border border-orange-100 flex items-center gap-2 min-w-0 w-[calc(100%-1.5rem)] hover:bg-orange-100 transition-colors">
+            <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
+            <p className="text-xs font-medium text-orange-700 truncate flex-1 text-left">{org.name}</p>
+            {allOrgs.length > 1 && <ChevronDown className="w-3 h-3 text-orange-400 shrink-0" />}
+          </button>
+        </DropdownMenuTrigger>
+        {allOrgs.length > 1 && (
+          <DropdownMenuContent align="start" className="w-56">
+            <DropdownMenuLabel className="text-xs text-slate-500">Switch mission</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {allOrgs.map((o) => (
+              <DropdownMenuItem key={o.id} onClick={() => switchOrg(o.id)} className="flex items-center gap-2 cursor-pointer">
+                {o.id === org.id ? (
+                  <Check className="w-3.5 h-3.5 text-primary shrink-0" />
+                ) : (
+                  <div className="w-3.5 h-3.5 shrink-0" />
+                )}
+                <span className="flex-1 truncate text-sm">{o.name}</span>
+                <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${ROLE_COLORS[o.myRole] ?? ""}`}>
+                  {o.myRole}
+                </Badge>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        )}
+      </DropdownMenu>
+    );
+  };
+
   const SidebarContent = () => (
     <>
       <div className="p-5 flex items-center gap-3 border-b border-slate-100">
@@ -80,19 +124,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="min-w-0">
           <span className="text-base font-bold tracking-tight text-slate-900">ReliefOps</span>
-          <p className="text-[11px] text-slate-400 truncate">Sudan Operations</p>
+          <p className="text-[11px] text-slate-400 truncate">Humanitarian Logistics</p>
         </div>
       </div>
 
-      {org && (
-        <div className="mx-3 mt-3 px-3 py-2 rounded-lg bg-orange-50 border border-orange-100 flex items-center gap-2 min-w-0">
-          <Building2 className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-          <p className="text-xs font-medium text-orange-700 truncate flex-1">{org.name}</p>
-          <Badge className={`text-[10px] px-1.5 py-0 shrink-0 ${ROLE_COLORS[org.myRole] ?? ""}`}>
-            {org.myRole}
-          </Badge>
-        </div>
-      )}
+      <OrgSwitcher />
 
       <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-3">
         <NavSection title="Operations" items={privateNavItems} />
@@ -103,6 +139,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </nav>
 
       <div className="p-3 border-t border-slate-100 shrink-0">
+        <Link href="/settings">
+          <div className={`flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-sm mb-1 ${isActive("/settings") ? "bg-primary/10 text-primary font-semibold" : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"}`}>
+            <Settings className="h-4 w-4 shrink-0" />
+            <span>Settings</span>
+          </div>
+        </Link>
         <div className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg">
           <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={user?.imageUrl} />

@@ -1,6 +1,7 @@
-import { createContext, useContext, ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { createContext, useContext, ReactNode, useCallback } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react";
+import { getActiveOrgId, setActiveOrgId } from "@/lib/orgFetch";
 
 export interface OrgData {
   id: string;
@@ -12,20 +13,29 @@ export interface OrgData {
 
 interface OrgContextValue {
   org: OrgData | null;
+  allOrgs: OrgData[];
   isLoading: boolean;
   refetch: () => void;
+  switchOrg: (id: string) => void;
 }
 
-const OrgContext = createContext<OrgContextValue>({ org: null, isLoading: true, refetch: () => {} });
+const OrgContext = createContext<OrgContextValue>({
+  org: null,
+  allOrgs: [],
+  isLoading: true,
+  refetch: () => {},
+  switchOrg: () => {},
+});
 
 export function OrgProvider({ children }: { children: ReactNode }) {
   const { isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, refetch } = useQuery<OrgData | null>({
-    queryKey: ["org", "me"],
+  const { data: allOrgs = [], isLoading, refetch } = useQuery<OrgData[]>({
+    queryKey: ["orgs", "my-orgs"],
     queryFn: async () => {
-      const r = await fetch("/api/orgs/me", { credentials: "include" });
-      if (!r.ok) return null;
+      const r = await fetch("/api/orgs/my-orgs", { credentials: "include" });
+      if (!r.ok) return [];
       return r.json();
     },
     enabled: !!isSignedIn,
@@ -33,8 +43,25 @@ export function OrgProvider({ children }: { children: ReactNode }) {
     staleTime: 30_000,
   });
 
+  // Active org: prefer the one stored in localStorage, else first in list
+  const activeId = getActiveOrgId();
+  const org = (activeId && allOrgs.find((o) => o.id === activeId)) || allOrgs[0] || null;
+
+  // Keep localStorage in sync with the resolved org
+  if (org && org.id !== activeId) {
+    setActiveOrgId(org.id);
+  }
+
+  const switchOrg = useCallback((id: string) => {
+    setActiveOrgId(id);
+    // Clear all cached API data so everything reloads for the new org context
+    queryClient.clear();
+    // Refetch the org list so the context updates
+    queryClient.invalidateQueries({ queryKey: ["orgs", "my-orgs"] });
+  }, [queryClient]);
+
   return (
-    <OrgContext.Provider value={{ org: data ?? null, isLoading, refetch }}>
+    <OrgContext.Provider value={{ org, allOrgs, isLoading, refetch, switchOrg }}>
       {children}
     </OrgContext.Provider>
   );

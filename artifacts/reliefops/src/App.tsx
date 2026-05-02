@@ -24,6 +24,7 @@ import ActivityLog from "@/pages/ActivityLog";
 import Onboarding from "@/pages/Onboarding";
 import TeamManagement from "@/pages/TeamManagement";
 import SharedBoard from "@/pages/SharedBoard";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = publishableKeyFromHost(
@@ -165,8 +166,8 @@ function ClerkProviderWithRoutes() {
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       localization={{
-        signIn: { start: { title: "Welcome to ReliefOps", subtitle: "Sudan Crisis Logistics Command Center" } },
-        signUp: { start: { title: "Join ReliefOps", subtitle: "Coordinate relief efforts across Sudan" } },
+        signIn: { start: { title: "Welcome to ReliefOps", subtitle: "Global Humanitarian Logistics Platform" } },
+        signUp: { start: { title: "Join ReliefOps", subtitle: "Coordinate relief efforts worldwide" } },
       }}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
@@ -192,6 +193,7 @@ function ClerkProviderWithRoutes() {
             <Route path="/activity"><ProtectedRoute component={ActivityLog} /></Route>
             <Route path="/board"><ProtectedRoute component={SharedBoard} /></Route>
             <Route path="/team"><ProtectedRoute component={TeamManagement} /></Route>
+            <Route path="/settings"><ProtectedRoute component={Settings} /></Route>
 
             <Route component={NotFound} />
           </Switch>

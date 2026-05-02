@@ -343,6 +343,24 @@ async function seed() {
     ]);
   }
 
+  // ── Demo Org Members (fake users for team management UI) ─────────────────
+  const demoMembers = [
+    { userId: "demo:fatima.malik", email: "fatima.malik@unicef.org", fullName: "Fatima Malik", role: "Admin" as const },
+    { userId: "demo:omar.sheikh", email: "omar.sheikh@unicef.org", fullName: "Omar Sheikh", role: "Coordinator" as const },
+    { userId: "demo:amira.hassan", email: "amira.hassan@unicef.org", fullName: "Amira Hassan", role: "Coordinator" as const },
+    { userId: "demo:yusuf.ibrahim", email: "yusuf.ibrahim@unicef.org", fullName: "Yusuf Ibrahim", role: "Coordinator" as const },
+    { userId: "demo:sara.nour", email: "sara.nour@unicef.org", fullName: "Sara Nour", role: "Viewer" as const },
+  ];
+
+  for (const m of demoMembers) {
+    const exists = await db.select().from(orgMembersTable)
+      .then((rows) => rows.find((r) => r.userId === m.userId && r.orgId === demoOrg.id));
+    if (!exists) {
+      await db.insert(orgMembersTable).values({ ...m, orgId: demoOrg.id });
+    }
+  }
+  console.log("  Added 5 demo team members");
+
   console.log("Seed complete! Demo org invite code: SUDAN1");
 }
 

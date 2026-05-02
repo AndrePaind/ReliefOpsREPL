@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useUser } from "@clerk/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Building2, Users, ArrowRight, LogIn } from "lucide-react";
+import { Building2, Users, ArrowRight, LogIn, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { setActiveOrgId } from "@/lib/orgFetch";
 
 type Mode = "choose" | "create" | "join";
 
@@ -31,14 +32,12 @@ export default function Onboarding() {
           userFullName: user?.fullName ?? "",
         }),
       });
-      if (!r.ok) {
-        const e = await r.json();
-        throw new Error(e.error ?? "Failed to create organization");
-      }
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? "Failed to create organization"); }
       return r.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["org", "me"] });
+    onSuccess: (data) => {
+      setActiveOrgId(data.id);
+      queryClient.invalidateQueries({ queryKey: ["orgs", "my-orgs"] });
       toast.success("Organization created! Welcome to ReliefOps.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -56,15 +55,13 @@ export default function Onboarding() {
           userFullName: user?.fullName ?? "",
         }),
       });
-      if (!r.ok) {
-        const e = await r.json();
-        throw new Error(e.error ?? "Failed to join organization");
-      }
+      if (!r.ok) { const e = await r.json(); throw new Error(e.error ?? "Failed to join organization"); }
       return r.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["org", "me"] });
-      toast.success("Joined organization! You're in.");
+    onSuccess: (data) => {
+      setActiveOrgId(data.id);
+      queryClient.invalidateQueries({ queryKey: ["orgs", "my-orgs"] });
+      toast.success("You're in! Welcome to the team.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -75,23 +72,23 @@ export default function Onboarding() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary text-white mb-4 shadow-lg">
-            <Building2 className="w-7 h-7" />
+            <Globe className="w-7 h-7" />
           </div>
           <h1 className="text-3xl font-bold text-slate-900">Welcome to ReliefOps</h1>
-          <p className="text-slate-500 mt-2">Sudan Crisis Logistics Command Center</p>
+          <p className="text-slate-500 mt-2">The global platform for humanitarian logistics</p>
         </div>
 
         {mode === "choose" && (
           <div className="space-y-4">
             <p className="text-center text-slate-600 mb-6">
-              To get started, create a new organization for your NGO or join an existing team.
+              Create a new team for your mission, or join an existing one with an invite code.
             </p>
             <button
               onClick={() => setMode("create")}
               className="w-full p-6 bg-white rounded-2xl border-2 border-slate-200 hover:border-primary hover:bg-orange-50/50 transition-all text-left group shadow-sm"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary transition-colors">
                   <Building2 className="w-6 h-6 text-primary group-hover:text-white transition-colors" />
                 </div>
                 <div className="flex-1">
@@ -107,7 +104,7 @@ export default function Onboarding() {
               className="w-full p-6 bg-white rounded-2xl border-2 border-slate-200 hover:border-primary hover:bg-orange-50/50 transition-all text-left group shadow-sm"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-primary transition-colors">
                   <Users className="w-6 h-6 text-slate-500 group-hover:text-white transition-colors" />
                 </div>
                 <div className="flex-1">
@@ -125,11 +122,11 @@ export default function Onboarding() {
             <h2 className="text-lg font-semibold text-slate-900">Create your organization</h2>
             <div className="space-y-2">
               <Label htmlFor="orgName">Organization name *</Label>
-              <Input id="orgName" placeholder="e.g. UNICEF Sudan, MSF Khartoum" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
+              <Input id="orgName" placeholder="e.g. UNICEF Sudan, MSF Khartoum, IRC Yemen" value={orgName} onChange={(e) => setOrgName(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="orgDesc">Description (optional)</Label>
-              <Textarea id="orgDesc" placeholder="Brief description of your NGO's focus area" value={orgDesc} onChange={(e) => setOrgDesc(e.target.value)} rows={2} />
+              <Textarea id="orgDesc" placeholder="Your NGO's focus area or mission description" value={orgDesc} onChange={(e) => setOrgDesc(e.target.value)} rows={2} />
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setMode("choose")} className="flex-1">Back</Button>

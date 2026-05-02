@@ -190,17 +190,30 @@ export default function TeamManagement() {
           <ul className="divide-y divide-slate-100">
             {members.map((m) => {
               const RoleIcon = ROLE_ICONS[m.role] ?? Shield;
+              const isDemo = m.userId.startsWith("demo:");
               const isPending = m.userId.startsWith("pending:");
               return (
-                <li key={m.id} className="flex items-center gap-4 px-6 py-4">
+                <li key={m.id} className={`flex items-center gap-4 px-6 py-4 ${isDemo ? "bg-slate-50/60" : ""}`}>
                   <Avatar className="h-9 w-9 shrink-0">
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
+                    <AvatarFallback className={`text-sm font-semibold ${isDemo ? "bg-slate-200 text-slate-500" : "bg-primary/10 text-primary"}`}>
                       {(m.fullName || m.email).charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-slate-900 truncate">{m.fullName || m.email}</p>
-                    <p className="text-sm text-slate-500 truncate">{m.email}{isPending && <span className="ml-2 text-amber-600 text-xs">(pending sign-up)</span>}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-slate-900 truncate">{m.fullName || m.email}</p>
+                      {isDemo && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-200 text-slate-500 uppercase tracking-wide border border-slate-300">
+                          Demo
+                        </span>
+                      )}
+                      {isPending && !isDemo && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-700 uppercase tracking-wide border border-amber-200">
+                          Pending
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-slate-500 truncate">{m.email}</p>
                   </div>
                   {org.myRole === "Admin" ? (
                     <Select value={m.role} onValueChange={(role) => changeRole.mutate({ memberId: m.id, role })}>

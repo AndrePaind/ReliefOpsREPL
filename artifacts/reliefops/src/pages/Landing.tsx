@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import { ArrowRight, Activity, MapPin, Package, ShieldAlert } from "lucide-react";
+import { ArrowRight, Activity, MapPin, Package, ShieldAlert, Globe, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function Landing() {
@@ -19,17 +19,16 @@ export default function Landing() {
             Log in
           </Link>
           <Link href="/sign-up">
-            <Button className="font-semibold shadow-sm active-elevate-2">Get Started</Button>
+            <Button className="font-semibold shadow-sm">Get Started</Button>
           </Link>
         </div>
       </header>
 
       {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center p-6 text-center overflow-hidden relative">
-        {/* Background elements */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        
-        <motion.div 
+
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
@@ -37,22 +36,22 @@ export default function Landing() {
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-orange-100 border border-orange-200 text-orange-800 text-xs font-semibold uppercase tracking-wider mb-8">
             <ShieldAlert className="h-3.5 w-3.5" />
-            Crisis Logistics Command Center
+            Crisis Logistics Platform &nbsp;·&nbsp; Pilot: Sudan Operations
           </div>
-          
+
           <h1 className="text-5xl md:text-7xl font-extrabold text-slate-900 tracking-tight leading-[1.1] mb-6">
-            Coordinate relief. <br/>
+            Coordinate relief. <br />
             <span className="text-primary">Save lives faster.</span>
           </h1>
-          
+
           <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            The mission-critical platform for NGO coordinators and volunteer leads. 
-            Manage supplies, track transfers, and route critical resources across multiple hubs under pressure.
+            The mission-critical platform for NGO coordinators and volunteer leads worldwide.
+            Manage supplies, track transfers, and route critical resources across multiple hubs — even under the most demanding field conditions.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/sign-up">
-              <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base font-bold shadow-lg shadow-primary/20 active-elevate-2">
+              <Button size="lg" className="w-full sm:w-auto h-14 px-8 text-base font-bold shadow-lg shadow-primary/20">
                 Deploy ReliefOps <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -62,10 +61,15 @@ export default function Landing() {
               </Button>
             </Link>
           </div>
+
+          {/* Pilot note */}
+          <p className="mt-6 text-xs text-slate-400">
+            Current pilot deployment: Sudan · More regions coming soon
+          </p>
         </motion.div>
 
         {/* Features Grid */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
@@ -80,31 +84,31 @@ export default function Landing() {
               Monitor inventory across your entire logistics network in real-time. Identify bottlenecks before they become critical shortages.
             </p>
           </div>
-          
+
           <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="h-12 w-12 rounded-xl bg-orange-100 flex items-center justify-center mb-6">
-              <Activity className="h-6 w-6 text-orange-700" />
+              <Globe className="h-6 w-6 text-orange-700" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-3">Urgent Prioritization</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">Inter-NGO Coordination</h3>
             <p className="text-slate-600 leading-relaxed">
-              Triage incoming requests by severity. Smart matching algorithms automatically suggest the optimal hub to fulfill critical needs.
+              Post surplus availability and urgent needs to a shared board visible across all NGOs in your region. No more siloed operations.
             </p>
           </div>
-          
+
           <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
             <div className="h-12 w-12 rounded-xl bg-emerald-100 flex items-center justify-center mb-6">
-              <Package className="h-6 w-6 text-emerald-700" />
+              <Users className="h-6 w-6 text-emerald-700" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900 mb-3">Rapid Stock Import</h3>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">Multi-Mission Support</h3>
             <p className="text-slate-600 leading-relaxed">
-              Onboard hundreds of donated items in seconds via CSV import or live barcode scanning. Keep data dense and entry fast.
+              Belong to multiple organizations and switch between missions instantly. One account, every operation you're part of.
             </p>
           </div>
         </motion.div>
       </main>
-      
+
       <footer className="py-8 text-center text-slate-500 text-sm border-t border-slate-200 bg-white">
-        <p>Built for resilience. Ready for impact.</p>
+        <p>Built for resilience. Ready for impact — anywhere in the world.</p>
       </footer>
     </div>
   );
