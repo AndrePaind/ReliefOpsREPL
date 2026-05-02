@@ -98,4 +98,17 @@ router.delete("/:hubId/stock/:stockId", requireAuth, requireOrg, async (req, res
   res.status(204).send();
 });
 
+// DELETE /api/hubs/:hubId
+router.delete("/:hubId", requireAuth, requireOrg, async (req, res) => {
+  const hubId = req.params.hubId as string;
+  const orgId = (req as any).orgId as string;
+  const [hub] = await db.select().from(hubsTable).where(and(eq(hubsTable.id, hubId), eq(hubsTable.orgId, orgId)));
+  if (!hub) { res.status(404).json({ error: "Hub not found" }); return; }
+  // Cascade: delete all stock entries first
+  await db.delete(hubStockTable).where(eq(hubStockTable.hubId, hubId));
+  await db.delete(hubsTable).where(eq(hubsTable.id, hubId));
+  await logActivity({ orgId, actorId: (req as any).userId, entityType: "hub", entityId: hubId, action: "deleted", payload: { name: hub.name } });
+  res.status(204).send();
+});
+
 export default router;

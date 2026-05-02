@@ -1,11 +1,13 @@
 import { useState, useCallback } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import {
   useGetHub, getGetHubQueryKey,
   useGetHubStock, getGetHubStockQueryKey,
   useDeleteStockEntry,
   useUpdateStockEntry,
   useUpdateHub,
+  useDeleteHub,
+  getListHubsQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Package, Scan, Upload, ArrowLeft, AlertTriangle, Trash2, Calendar, Pencil, Check, X, Settings2 } from "lucide-react";
+import { MapPin, Package, Scan, Upload, ArrowLeft, AlertTriangle, Trash2, Calendar, Pencil, Check, X, Settings2, OctagonAlert } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { StockUpload } from "@/components/StockUpload";
 import { useQueryClient } from "@tanstack/react-query";
@@ -132,10 +134,12 @@ function EditHubDialog({ open, onClose, hub }: EditHubDialogProps) {
 export default function HubDetail() {
   const { hubId } = useParams<{ hubId: string }>();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [scanOpen, setScanOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addStockOpen, setAddStockOpen] = useState(false);
   const [editHubOpen, setEditHubOpen] = useState(false);
+  const [deleteHubOpen, setDeleteHubOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<EditingRow | null>(null);
 
@@ -148,6 +152,21 @@ export default function HubDetail() {
 
   const deleteStock = useDeleteStockEntry();
   const updateStock = useUpdateStockEntry();
+  const deleteHubMutation = useDeleteHub();
+
+  const handleDeleteHub = () => {
+    deleteHubMutation.mutate(
+      { hubId },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getListHubsQueryKey() });
+          toast.success(`Hub "${hub?.name}" deleted`);
+          navigate("/hubs");
+        },
+        onError: () => toast.error("Failed to delete hub"),
+      }
+    );
+  };
 
   const handleDeleteStock = async (stockId: string) => {
     deleteStock.mutate(

@@ -1,10 +1,46 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useGetDashboardSummary } from "@workspace/api-client-react";
-import { MapPin, AlertTriangle, Truck, Users, Activity as ActivityIcon, Package } from "lucide-react";
+import { MapPin, AlertTriangle, Truck, Users, Activity as ActivityIcon, Package, ChevronRight } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "wouter";
 import { PriorityBadge } from "@/components/PriorityBadge";
+
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  href,
+  accentClass,
+}: {
+  title: string;
+  value: number;
+  subtitle: string;
+  icon: React.ReactNode;
+  href: string;
+  accentClass: string;
+}) {
+  return (
+    <Link href={href}>
+      <Card className="bg-white shadow-sm border-slate-200 cursor-pointer hover:shadow-md hover:border-slate-300 transition-all group active:scale-[0.98]">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-semibold text-slate-600">{title}</CardTitle>
+          <div className={`p-1.5 rounded-lg ${accentClass} transition-colors`}>{icon}</div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-end justify-between">
+            <div>
+              <div className="text-3xl font-bold text-slate-900">{value}</div>
+              <p className="text-xs text-slate-500 mt-1 font-medium">{subtitle}</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-500 mb-1 transition-colors" />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
 
 export default function Dashboard() {
   const { data: summary, isLoading, isError } = useGetDashboardSummary();
@@ -49,53 +85,44 @@ export default function Dashboard() {
         <p className="text-slate-500 mt-1">Real-time overview of your logistics network.</p>
       </div>
 
+      {/* KPI stat cards — each navigates to the relevant section */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-white shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600">Urgent Requests</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{summary.urgentRequests}</div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">Require immediate attention</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600">Active Transfers</CardTitle>
-            <Truck className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{summary.activeTransfers}</div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">In transit right now</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600">Low Stock Alerts</CardTitle>
-            <ActivityIcon className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{summary.lowStockCount}</div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">Items near depletion</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-white shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-600">Available Volunteers</CardTitle>
-            <Users className="h-4 w-4 text-emerald-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-slate-900">{summary.availableVolunteers}</div>
-            <p className="text-xs text-slate-500 mt-1 font-medium">Ready for deployment</p>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Urgent Requests"
+          value={summary.urgentRequests}
+          subtitle="Require immediate attention"
+          icon={<AlertTriangle className="h-4 w-4 text-orange-500" />}
+          href="/requests?priority=Urgent"
+          accentClass="bg-orange-50 group-hover:bg-orange-100"
+        />
+        <StatCard
+          title="Active Transfers"
+          value={summary.activeTransfers}
+          subtitle="In transit right now"
+          icon={<Truck className="h-4 w-4 text-blue-500" />}
+          href="/transfers"
+          accentClass="bg-blue-50 group-hover:bg-blue-100"
+        />
+        <StatCard
+          title="Low Stock Alerts"
+          value={summary.lowStockCount}
+          subtitle="Items near depletion"
+          icon={<ActivityIcon className="h-4 w-4 text-destructive" />}
+          href="/hubs"
+          accentClass="bg-red-50 group-hover:bg-red-100"
+        />
+        <StatCard
+          title="Available Volunteers"
+          value={summary.availableVolunteers}
+          subtitle="Ready for deployment"
+          icon={<Users className="h-4 w-4 text-emerald-500" />}
+          href="/volunteers"
+          accentClass="bg-emerald-50 group-hover:bg-emerald-100"
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        {/* Recent Activity */}
         <Card className="bg-white shadow-sm border-slate-200 flex flex-col">
           <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -114,7 +141,8 @@ export default function Dashboard() {
                     <div className="flex justify-between items-start gap-4">
                       <div>
                         <p className="text-sm text-slate-900">
-                          <span className="font-semibold">{activity.entityType}</span> {activity.action.replace(/_/g, ' ').toLowerCase()}
+                          <span className="font-semibold">{activity.entityType}</span>{" "}
+                          {activity.action.replace(/_/g, " ").toLowerCase()}
                         </p>
                         <p className="text-xs text-slate-500 mt-1">
                           {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
@@ -129,37 +157,65 @@ export default function Dashboard() {
         </Card>
 
         <div className="space-y-6">
+          {/* Network Status */}
           <Card className="bg-white shadow-sm border-slate-200">
             <CardHeader className="border-b border-slate-100 bg-slate-50/50 pb-4">
               <CardTitle className="text-lg">Network Status</CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm font-medium text-slate-600">Active Hubs</span>
-                <span className="text-lg font-bold text-slate-900">{summary.totalHubs}</span>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Critical Requests</span>
-                  <span className="font-bold text-destructive">{summary.requestsByPriority["Critical"] || 0}</span>
+            <CardContent className="p-4 space-y-1">
+              <Link href="/hubs">
+                <div className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer group">
+                  <span className="text-sm font-medium text-slate-600 group-hover:text-slate-900">Active Hubs</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-bold text-slate-900">{summary.totalHubs}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-500" />
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Urgent Requests</span>
-                  <span className="font-bold text-orange-500">{summary.requestsByPriority["Urgent"] || 0}</span>
+              </Link>
+              <Link href="/requests?priority=Critical">
+                <div className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-red-50 transition-colors cursor-pointer group">
+                  <span className="text-sm font-medium text-slate-600 group-hover:text-destructive">Critical Requests</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-bold text-destructive">{summary.requestsByPriority["Critical"] || 0}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-destructive" />
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Open Requests</span>
-                  <span className="font-bold text-blue-600">{summary.requestsByStatus["Open"] || 0}</span>
+              </Link>
+              <Link href="/requests?priority=Urgent">
+                <div className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-orange-50 transition-colors cursor-pointer group">
+                  <span className="text-sm font-medium text-slate-600 group-hover:text-orange-600">Urgent Requests</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-bold text-orange-500">{summary.requestsByPriority["Urgent"] || 0}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-orange-400" />
+                  </div>
                 </div>
-              </div>
+              </Link>
+              <Link href="/requests?status=Open">
+                <div className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer group">
+                  <span className="text-sm font-medium text-slate-600 group-hover:text-blue-700">Open Requests</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-bold text-blue-600">{summary.requestsByStatus["Open"] || 0}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-400" />
+                  </div>
+                </div>
+              </Link>
+              <Link href="/transfers">
+                <div className="flex items-center justify-between py-2.5 px-2 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer group">
+                  <span className="text-sm font-medium text-slate-600 group-hover:text-blue-700">Active Transfers</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-lg font-bold text-blue-600">{summary.activeTransfers}</span>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-blue-400" />
+                  </div>
+                </div>
+              </Link>
             </CardContent>
           </Card>
-          
+
           {/* Quick Actions */}
           <div className="grid grid-cols-2 gap-4">
             <Link href="/requests/new">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-primary hover:shadow-md transition-all cursor-pointer group active-elevate-2">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-primary hover:shadow-md transition-all cursor-pointer group active:scale-[0.98]">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-3 group-hover:bg-primary transition-colors">
                   <Package className="h-5 w-5 text-primary group-hover:text-white" />
                 </div>
                 <h3 className="font-semibold text-slate-900">New Request</h3>
@@ -167,7 +223,7 @@ export default function Dashboard() {
               </div>
             </Link>
             <Link href="/hubs">
-              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group active-elevate-2">
+              <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group active:scale-[0.98]">
                 <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center mb-3 group-hover:bg-blue-500 transition-colors">
                   <MapPin className="h-5 w-5 text-blue-600 group-hover:text-white" />
                 </div>

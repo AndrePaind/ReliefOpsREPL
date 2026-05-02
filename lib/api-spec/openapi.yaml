@@ -119,6 +119,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Hub"
+    delete:
+      operationId: deleteHub
+      tags: [hubs]
+      summary: Delete a hub and all its stock
+      parameters:
+        - name: hubId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Hub deleted
 
   # ─── Hub Stock ───────────────────────────────────────────────────────────────
   /hubs/{hubId}/stock:

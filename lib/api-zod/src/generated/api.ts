@@ -82,6 +82,13 @@ export const UpdateHubResponse = zod.object({
 });
 
 /**
+ * @summary Delete a hub and all its stock
+ */
+export const DeleteHubParams = zod.object({
+  hubId: zod.coerce.string(),
+});
+
+/**
  * @summary Get all stock entries for a hub
  */
 export const GetHubStockParams = zod.object({

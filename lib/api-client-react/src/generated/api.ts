@@ -453,6 +453,90 @@ export const useUpdateHub = <
 };
 
 /**
+ * @summary Delete a hub and all its stock
+ */
+export const getDeleteHubUrl = (hubId: string) => {
+  return `/api/hubs/${hubId}`;
+};
+
+export const deleteHub = async (
+  hubId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteHubUrl(hubId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteHubMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteHub>>,
+    TError,
+    { hubId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteHub>>,
+  TError,
+  { hubId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteHub"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteHub>>,
+    { hubId: string }
+  > = (props) => {
+    const { hubId } = props ?? {};
+
+    return deleteHub(hubId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteHubMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteHub>>
+>;
+
+export type DeleteHubMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a hub and all its stock
+ */
+export const useDeleteHub = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteHub>>,
+    TError,
+    { hubId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteHub>>,
+  TError,
+  { hubId: string },
+  TContext
+> => {
+  return useMutation(getDeleteHubMutationOptions(options));
+};
+
+/**
  * @summary Get all stock entries for a hub
  */
 export const getGetHubStockUrl = (hubId: string) => {
