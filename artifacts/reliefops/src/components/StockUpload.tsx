@@ -6,7 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, FileUp, Upload, X, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useImportStockCsv } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getGetHubStockQueryKey } from "@workspace/api-client-react";
 
@@ -26,8 +25,8 @@ interface StockUploadProps {
 export function StockUpload({ hubId, onSuccess }: StockUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const queryClient = useQueryClient();
-  const importCsv = useImportStockCsv();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setResult(null);
@@ -44,40 +43,48 @@ export function StockUpload({ hubId, onSuccess }: StockUploadProps) {
       complete: async (results) => {
         const raw = results.data as Record<string, string>[];
         const rows = raw.map((r) => ({
-          hubName: r["hub_name"] || r["hubName"] || "",
+          // hub_name is optional when hubId is supplied — use a placeholder the backend ignores
+          hubName: r["hub_name"] || r["hubName"] || "__current_hub__",
           itemName: r["item_name"] || r["itemName"] || "",
           category: r["category"] || "Hygiene",
           quantity: parseInt(r["quantity"] || "0", 10),
           unit: r["unit"] || undefined,
           expiryDate: r["expiry_date"] || r["expiryDate"] || undefined,
           barcode: r["barcode"] || undefined,
-        })).filter((r) => r.itemName && r.hubName);
+        })).filter((r) => r.itemName);
 
         if (!rows.length) {
-          toast.error("No valid rows found. Check column names.");
+          toast.error("No valid rows found. Make sure item_name and quantity columns exist.");
           return;
         }
 
-        importCsv.mutate(
-          { data: { rows } },
-          {
-            onSuccess: (res) => {
-              setResult(res as ImportResult);
-              if (hubId) {
-                queryClient.invalidateQueries({ queryKey: getGetHubStockQueryKey(hubId) });
-              }
-              toast.success(`Import complete — ${(res as ImportResult).imported} new, ${(res as ImportResult).updated} updated`);
-              onSuccess?.();
-            },
-            onError: () => toast.error("Import failed. Please try again."),
+        setIsPending(true);
+        try {
+          const r = await fetch("/api/stock/csv-import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ rows, hubId: hubId ?? undefined }),
+          });
+          if (!r.ok) throw new Error(await r.text());
+          const res: ImportResult = await r.json();
+          setResult(res);
+          if (hubId) {
+            await queryClient.invalidateQueries({ queryKey: getGetHubStockQueryKey(hubId) });
           }
-        );
+          toast.success(`Import complete — ${res.imported} new, ${res.updated} updated`);
+          if (res.errors.length === 0) onSuccess?.();
+        } catch (e: any) {
+          toast.error(`Import failed: ${e.message}`);
+        } finally {
+          setIsPending(false);
+        }
       },
       error: (error) => {
         toast.error(`CSV parse error: ${error.message}`);
       },
     });
-  }, [file, importCsv, hubId, queryClient, onSuccess]);
+  }, [file, hubId, queryClient, onSuccess]);
 
   return (
     <Card className="border-slate-200">
@@ -86,7 +93,10 @@ export function StockUpload({ hubId, onSuccess }: StockUploadProps) {
           <FileUp className="h-5 w-5 text-primary" />
           Bulk Stock Import
         </CardTitle>
-        <CardDescription>Upload a CSV to update inventory across hubs</CardDescription>
+        <CardDescription>
+          Upload a CSV to update inventory.{" "}
+          {hubId ? "hub_name is optional — stock will be added to this hub." : "Include hub_name to route rows to specific hubs."}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid w-full items-center gap-1.5">
@@ -97,33 +107,37 @@ export function StockUpload({ hubId, onSuccess }: StockUploadProps) {
             accept=".csv"
             onChange={handleFileChange}
             className="cursor-pointer"
-            data-testid="input-csv-upload"
           />
         </div>
 
         <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm text-slate-600">
           <p className="font-semibold text-slate-800 mb-1.5">Required columns:</p>
           <div className="flex flex-wrap gap-1">
-            {["hub_name", "item_name", "category", "quantity"].map((col) => (
+            {["item_name", "quantity"].map((col) => (
               <code key={col} className="text-xs bg-slate-200 px-1.5 py-0.5 rounded text-slate-800 font-mono">{col}</code>
             ))}
           </div>
           <p className="mt-2 font-semibold text-slate-800 mb-1.5">Optional columns:</p>
           <div className="flex flex-wrap gap-1">
-            {["unit", "barcode", "expiry_date"].map((col) => (
+            {["hub_name", "category", "unit", "barcode", "expiry_date"].map((col) => (
               <code key={col} className="text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">{col}</code>
             ))}
           </div>
+          <p className="mt-2 text-xs text-slate-500">
+            category values: <code className="bg-slate-100 px-1 py-0.5 rounded">Medicine</code>{" "}
+            <code className="bg-slate-100 px-1 py-0.5 rounded">Food</code>{" "}
+            <code className="bg-slate-100 px-1 py-0.5 rounded">Hygiene</code>{" "}
+            <code className="bg-slate-100 px-1 py-0.5 rounded">First Aid</code>
+          </p>
         </div>
 
         <Button
           onClick={handleUpload}
-          disabled={!file || importCsv.isPending}
+          disabled={!file || isPending}
           className="w-full"
-          data-testid="button-csv-import"
         >
-          {importCsv.isPending ? "Importing..." : "Upload & Import"}
-          {!importCsv.isPending && <Upload className="ml-2 h-4 w-4" />}
+          {isPending ? "Importing..." : "Upload & Import"}
+          {!isPending && <Upload className="ml-2 h-4 w-4" />}
         </Button>
 
         {result && (
@@ -160,6 +174,12 @@ export function StockUpload({ hubId, onSuccess }: StockUploadProps) {
                 <ul className="text-xs text-red-700 space-y-1">
                   {result.errors.map((e, i) => <li key={i}>{e}</li>)}
                 </ul>
+              </div>
+            )}
+            {result.errors.length === 0 && result.imported + result.updated > 0 && (
+              <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 p-3 rounded-lg">
+                <CheckCircle2 className="h-4 w-4 shrink-0" />
+                Import successful! Stock list has been updated.
               </div>
             )}
           </div>

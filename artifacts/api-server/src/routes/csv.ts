@@ -10,10 +10,18 @@ const router = Router();
 // POST /api/stock/csv-import
 router.post("/csv-import", requireAuth, requireOrg, async (req, res) => {
   const orgId = (req as any).orgId as string;
-  const { rows } = req.body as {
+  const { rows, hubId: bodyHubId } = req.body as {
     rows: { hubName: string; itemName: string; category: string; quantity: number; unit?: string; expiryDate?: string; barcode?: string }[];
+    hubId?: string;
   };
   if (!rows?.length) { res.status(400).json({ error: "rows array is required" }); return; }
+
+  // If a specific hubId was supplied (e.g. uploading from a hub detail page), resolve it once
+  let fixedHub: typeof hubsTable.$inferSelect | null = null;
+  if (bodyHubId) {
+    const [h] = await db.select().from(hubsTable).where(and(eq(hubsTable.id, bodyHubId), eq(hubsTable.orgId, orgId)));
+    fixedHub = h ?? null;
+  }
 
   let imported = 0, updated = 0, skipped = 0;
   const duplicateWarnings: string[] = [];
@@ -21,9 +29,18 @@ router.post("/csv-import", requireAuth, requireOrg, async (req, res) => {
 
   for (const row of rows) {
     try {
-      let [hub] = await db.select().from(hubsTable).where(and(ilike(hubsTable.name, row.hubName), eq(hubsTable.orgId, orgId)));
-      if (!hub) {
-        [hub] = await db.insert(hubsTable).values({ orgId, name: row.hubName }).returning();
+      // Use the fixed hub (from hubId) if available, otherwise match/create by name
+      let hub: typeof hubsTable.$inferSelect;
+      if (fixedHub) {
+        hub = fixedHub;
+      } else {
+        const [found] = await db.select().from(hubsTable).where(and(ilike(hubsTable.name, row.hubName), eq(hubsTable.orgId, orgId)));
+        if (found) {
+          hub = found;
+        } else {
+          const [created] = await db.insert(hubsTable).values({ orgId, name: row.hubName }).returning();
+          hub = created;
+        }
       }
       const validCategories = ["Medicine", "Food", "Hygiene", "First Aid"];
       const category = validCategories.includes(row.category) ? row.category : "Hygiene";

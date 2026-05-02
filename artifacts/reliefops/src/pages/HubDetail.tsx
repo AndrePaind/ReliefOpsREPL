@@ -5,6 +5,7 @@ import {
   useGetHubStock, getGetHubStockQueryKey,
   useDeleteStockEntry,
   useUpdateStockEntry,
+  useUpdateHub,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MapPin, Package, Scan, Upload, ArrowLeft, AlertTriangle, Trash2, Calendar, Pencil, Check, X } from "lucide-react";
+import { MapPin, Package, Scan, Upload, ArrowLeft, AlertTriangle, Trash2, Calendar, Pencil, Check, X, Settings2 } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { StockUpload } from "@/components/StockUpload";
 import { useQueryClient } from "@tanstack/react-query";
@@ -40,12 +41,101 @@ interface EditingRow {
   expiryDate: string;
 }
 
+interface EditHubDialogProps {
+  open: boolean;
+  onClose: () => void;
+  hub: { id: string; name: string; address?: string | null; lat?: number | null; lng?: number | null; imageUrl?: string | null };
+}
+
+function EditHubDialog({ open, onClose, hub }: EditHubDialogProps) {
+  const queryClient = useQueryClient();
+  const updateHub = useUpdateHub();
+  const [name, setName] = useState(hub.name);
+  const [address, setAddress] = useState(hub.address ?? "");
+  const [lat, setLat] = useState(hub.lat != null ? String(hub.lat) : "");
+  const [lng, setLng] = useState(hub.lng != null ? String(hub.lng) : "");
+  const [imageUrl, setImageUrl] = useState(hub.imageUrl ?? "");
+
+  const handleSave = () => {
+    if (!name.trim()) { toast.error("Hub name is required"); return; }
+    updateHub.mutate(
+      {
+        hubId: hub.id,
+        data: {
+          name: name.trim(),
+          address: address.trim() || undefined,
+          lat: lat ? parseFloat(lat) : undefined,
+          lng: lng ? parseFloat(lng) : undefined,
+          imageUrl: imageUrl.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetHubQueryKey(hub.id) });
+          queryClient.invalidateQueries({ queryKey: ["listHubs"] });
+          toast.success("Hub updated");
+          onClose();
+        },
+        onError: () => toast.error("Failed to update hub"),
+      }
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" /> Edit Hub Details
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="space-y-1.5">
+            <Label>Hub name *</Label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Khartoum Central Hub" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Address</Label>
+            <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, district, city, country" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label>Latitude</Label>
+              <Input type="number" step="any" value={lat} onChange={(e) => setLat(e.target.value)} placeholder="e.g. 15.5007" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Longitude</Label>
+              <Input type="number" step="any" value={lng} onChange={(e) => setLng(e.target.value)} placeholder="e.g. 32.5599" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cover image URL</Label>
+            <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://…" />
+            {imageUrl && (
+              <div className="mt-2 rounded-lg overflow-hidden h-28 bg-slate-100">
+                <img src={imageUrl} alt="preview" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.style.display = "none")} />
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 pt-1">
+            <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1" disabled={!name.trim() || updateHub.isPending} onClick={handleSave}>
+              {updateHub.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function HubDetail() {
   const { hubId } = useParams<{ hubId: string }>();
   const queryClient = useQueryClient();
   const [scanOpen, setScanOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addStockOpen, setAddStockOpen] = useState(false);
+  const [editHubOpen, setEditHubOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<EditingRow | null>(null);
 
@@ -157,6 +247,10 @@ export default function HubDetail() {
             <ArrowLeft className="mr-2 h-4 w-4" /> All Hubs
           </Button>
         </Link>
+        {editHubOpen && (
+          <EditHubDialog open={editHubOpen} onClose={() => setEditHubOpen(false)} hub={hub} />
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{hub.name}</h1>
@@ -167,6 +261,9 @@ export default function HubDetail() {
             )}
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" className="gap-2" onClick={() => setEditHubOpen(true)}>
+              <Settings2 className="h-4 w-4" /> Edit Hub
+            </Button>
             <Dialog open={scanOpen} onOpenChange={setScanOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="gap-2">
