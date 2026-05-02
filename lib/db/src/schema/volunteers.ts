@@ -28,6 +28,7 @@ export const tasksTable = pgTable("tasks", {
   orgId: text("org_id"),
   transferId: text("transfer_id").references(() => transfersTable.id, { onDelete: "cascade" }),
   volunteerId: text("volunteer_id").references(() => volunteersTable.id, { onDelete: "set null" }),
+  coordinatorId: text("coordinator_id"),
   type: text("type").notNull().$type<TaskType>(),
   status: text("status").notNull().default("Open").$type<TaskStatus>(),
   startsAt: timestamp("starts_at", { withTimezone: true }),

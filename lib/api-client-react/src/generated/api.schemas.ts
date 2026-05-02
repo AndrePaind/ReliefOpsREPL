@@ -300,11 +300,20 @@ export const TaskStatus = {
   Done: "Done",
 } as const;
 
+export type TaskCoordinator = {
+  id?: string;
+  fullName?: string | null;
+  email?: string;
+  role?: string;
+} | null;
+
 export interface Task {
   id: string;
   transferId?: string | null;
   volunteerId?: string | null;
   volunteer?: Volunteer | null;
+  coordinatorId?: string | null;
+  coordinator?: TaskCoordinator;
   type: TaskType;
   status: TaskStatus;
   startsAt?: string | null;
@@ -406,7 +415,8 @@ export const UpdateTaskBodyStatus = {
 } as const;
 
 export interface UpdateTaskBody {
-  volunteerId?: string;
+  volunteerId?: string | null;
+  coordinatorId?: string | null;
   status?: UpdateTaskBodyStatus;
   startsAt?: string;
   endsAt?: string;

@@ -2291,6 +2291,90 @@ export const useUpdateVolunteer = <
 };
 
 /**
+ * @summary Delete a volunteer
+ */
+export const getDeleteVolunteerUrl = (volunteerId: string) => {
+  return `/api/volunteers/${volunteerId}`;
+};
+
+export const deleteVolunteer = async (
+  volunteerId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteVolunteerUrl(volunteerId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVolunteerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVolunteer>>,
+    TError,
+    { volunteerId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVolunteer>>,
+  TError,
+  { volunteerId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteVolunteer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVolunteer>>,
+    { volunteerId: string }
+  > = (props) => {
+    const { volunteerId } = props ?? {};
+
+    return deleteVolunteer(volunteerId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVolunteerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVolunteer>>
+>;
+
+export type DeleteVolunteerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a volunteer
+ */
+export const useDeleteVolunteer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVolunteer>>,
+    TError,
+    { volunteerId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVolunteer>>,
+  TError,
+  { volunteerId: string },
+  TContext
+> => {
+  return useMutation(getDeleteVolunteerMutationOptions(options));
+};
+
+/**
  * @summary List tasks with optional filters
  */
 export const getListTasksUrl = (params?: ListTasksParams) => {

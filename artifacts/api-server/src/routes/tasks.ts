@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { db, tasksTable, volunteersTable, organizationsTable } from "@workspace/db";
+import { db, tasksTable, volunteersTable, organizationsTable, orgMembersTable } from "@workspace/db";
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { requireAuth } from "../lib/auth";
 import { requireOrg } from "../lib/requireOrg";
@@ -18,7 +18,13 @@ async function buildTask(task: any) {
       volunteer = { ...v, activeTasks: count?.count ?? 0 };
     }
   }
-  return { ...task, volunteer };
+  let coordinator = null;
+  if (task.coordinatorId) {
+    const [m] = await db.select({ id: orgMembersTable.id, fullName: orgMembersTable.fullName, email: orgMembersTable.email, role: orgMembersTable.role })
+      .from(orgMembersTable).where(eq(orgMembersTable.id, task.coordinatorId as string));
+    if (m) coordinator = m;
+  }
+  return { ...task, volunteer, coordinator };
 }
 
 // GET /api/tasks
@@ -36,14 +42,16 @@ router.get("/", requireAuth, requireOrg, async (req, res) => {
 // POST /api/tasks
 router.post("/", requireAuth, requireOrg, async (req, res) => {
   const orgId = (req as any).orgId as string;
-  const { transferId, volunteerId, type, startsAt, endsAt } = req.body;
+  const { transferId, volunteerId, coordinatorId, type, startsAt, endsAt } = req.body;
   if (!type) { res.status(400).json({ error: "type is required" }); return; }
+  const hasAssignee = volunteerId || coordinatorId;
   const [task] = await db.insert(tasksTable).values({
     orgId,
     transferId: transferId ?? null,
     volunteerId: volunteerId ?? null,
+    coordinatorId: coordinatorId ?? null,
     type,
-    status: volunteerId ? "Assigned" : "Open",
+    status: hasAssignee ? "Assigned" : "Open",
     startsAt: startsAt ? new Date(startsAt) : null,
     endsAt: endsAt ? new Date(endsAt) : null,
   }).returning();
@@ -64,7 +72,7 @@ router.post("/", requireAuth, requireOrg, async (req, res) => {
     }
   }
 
-  await logActivity({ orgId, actorId: (req as any).userId, entityType: "task", entityId: task.id, action: "created", payload: { type, volunteerId } });
+  await logActivity({ orgId, actorId: (req as any).userId, entityType: "task", entityId: task.id, action: "created", payload: { type, volunteerId, coordinatorId } });
   res.status(201).json(await buildTask(task));
 });
 
@@ -72,9 +80,15 @@ router.post("/", requireAuth, requireOrg, async (req, res) => {
 router.patch("/:taskId", requireAuth, requireOrg, async (req, res) => {
   const taskId = req.params.taskId as string;
   const orgId = (req as any).orgId as string;
-  const { volunteerId, status, startsAt, endsAt } = req.body;
+  const { volunteerId, coordinatorId, status, startsAt, endsAt } = req.body;
   const [task] = await db.update(tasksTable)
-    .set({ ...(volunteerId !== undefined && { volunteerId }), ...(status && { status }), ...(startsAt !== undefined && { startsAt: startsAt ? new Date(startsAt) : null }), ...(endsAt !== undefined && { endsAt: endsAt ? new Date(endsAt) : null }) })
+    .set({
+      ...(volunteerId !== undefined && { volunteerId: volunteerId ?? null }),
+      ...(coordinatorId !== undefined && { coordinatorId: coordinatorId ?? null }),
+      ...(status && { status }),
+      ...(startsAt !== undefined && { startsAt: startsAt ? new Date(startsAt) : null }),
+      ...(endsAt !== undefined && { endsAt: endsAt ? new Date(endsAt) : null }),
+    })
     .where(and(eq(tasksTable.id, taskId), eq(tasksTable.orgId, orgId)))
     .returning();
   if (!task) { res.status(404).json({ error: "Task not found" }); return; }
@@ -94,7 +108,7 @@ router.patch("/:taskId", requireAuth, requireOrg, async (req, res) => {
     }
   }
 
-  await logActivity({ orgId, actorId: (req as any).userId, entityType: "task", entityId: task.id, action: "updated", payload: { volunteerId, status } });
+  await logActivity({ orgId, actorId: (req as any).userId, entityType: "task", entityId: task.id, action: "updated", payload: { volunteerId, coordinatorId, status } });
   res.json(await buildTask(task));
 });
 

@@ -578,6 +578,15 @@ export const GetTransferResponse = zod
               createdAt: zod.coerce.date(),
             })
             .nullish(),
+          coordinatorId: zod.string().nullish(),
+          coordinator: zod
+            .object({
+              id: zod.string().optional(),
+              fullName: zod.string().nullish(),
+              email: zod.string().optional(),
+              role: zod.string().optional(),
+            })
+            .nullish(),
           type: zod.enum(["Pickup", "Delivery/Transfer", "Stock Count"]),
           status: zod.enum(["Open", "Assigned", "In Progress", "Done"]),
           startsAt: zod.coerce.date().nullish(),
@@ -686,6 +695,13 @@ export const UpdateVolunteerResponse = zod.object({
 });
 
 /**
+ * @summary Delete a volunteer
+ */
+export const DeleteVolunteerParams = zod.object({
+  volunteerId: zod.coerce.string(),
+});
+
+/**
  * @summary List tasks with optional filters
  */
 export const ListTasksQueryParams = zod.object({
@@ -708,6 +724,15 @@ export const ListTasksResponseItem = zod.object({
       availabilityStatus: zod.enum(["Available", "Busy", "Offline"]),
       activeTasks: zod.number(),
       createdAt: zod.coerce.date(),
+    })
+    .nullish(),
+  coordinatorId: zod.string().nullish(),
+  coordinator: zod
+    .object({
+      id: zod.string().optional(),
+      fullName: zod.string().nullish(),
+      email: zod.string().optional(),
+      role: zod.string().optional(),
     })
     .nullish(),
   type: zod.enum(["Pickup", "Delivery/Transfer", "Stock Count"]),
@@ -737,7 +762,8 @@ export const UpdateTaskParams = zod.object({
 });
 
 export const UpdateTaskBody = zod.object({
-  volunteerId: zod.string().optional(),
+  volunteerId: zod.string().nullish(),
+  coordinatorId: zod.string().nullish(),
   status: zod.enum(["Open", "Assigned", "In Progress", "Done"]).optional(),
   startsAt: zod.coerce.date().optional(),
   endsAt: zod.coerce.date().optional(),
@@ -757,6 +783,15 @@ export const UpdateTaskResponse = zod.object({
       availabilityStatus: zod.enum(["Available", "Busy", "Offline"]),
       activeTasks: zod.number(),
       createdAt: zod.coerce.date(),
+    })
+    .nullish(),
+  coordinatorId: zod.string().nullish(),
+  coordinator: zod
+    .object({
+      id: zod.string().optional(),
+      fullName: zod.string().nullish(),
+      email: zod.string().optional(),
+      role: zod.string().optional(),
     })
     .nullish(),
   type: zod.enum(["Pickup", "Delivery/Transfer", "Stock Count"]),

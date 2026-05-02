@@ -1,24 +1,152 @@
+import { useState } from "react";
 import { useParams, Link } from "wouter";
 import {
   useGetTransfer, getGetTransferQueryKey,
   useUpdateTransfer, getListTransfersQueryKey,
   useListVolunteers, getListVolunteersQueryKey,
-  useCreateTask, getListTasksQueryKey,
-  useUpdateTask,
+  useCreateTask, useUpdateTask,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useOrg } from "@/context/OrgContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Truck, MapPin, Package, Users, ArrowRight, Clock, Plus, AlertTriangle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { ArrowLeft, Truck, MapPin, Package, Users, ArrowRight, Clock, Plus, AlertTriangle, Car, Shield, Crown, Check, ChevronsUpDown, X } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
+import { cn } from "@/lib/utils";
 
 const TRANSFER_STATUSES = ["Planned", "Dispatched", "Delivered"] as const;
 
+interface Member {
+  id: string;
+  userId: string;
+  email: string;
+  fullName: string | null;
+  role: "Admin" | "Coordinator" | "Viewer";
+}
+
+// ── Assignee picker — volunteers + coordinators ───────────────────────────────
+interface AssigneePickerProps {
+  taskId: string;
+  currentVolunteerId?: string | null;
+  currentCoordinatorId?: string | null;
+  currentVolunteer?: any;
+  currentCoordinator?: any;
+  onAssigned: () => void;
+}
+
+function AssigneePicker({ taskId, currentVolunteerId, currentCoordinatorId, currentVolunteer, currentCoordinator, onAssigned }: AssigneePickerProps) {
+  const { org } = useOrg();
+  const updateTask = useUpdateTask();
+  const [open, setOpen] = useState(false);
+
+  const { data: volunteers = [] } = useListVolunteers(undefined, {
+    query: { queryKey: getListVolunteersQueryKey() },
+  });
+  const { data: members = [] } = useQuery<Member[]>({
+    queryKey: ["org-members", org?.id],
+    queryFn: async () => {
+      const r = await fetch(`/api/orgs/${org!.id}/members`, { credentials: "include" });
+      return r.json();
+    },
+    enabled: !!org?.id,
+  });
+
+  const isAssigned = currentVolunteerId || currentCoordinatorId;
+  const assigneeName = currentVolunteer?.fullName ?? currentCoordinator?.fullName ?? currentCoordinator?.email ?? null;
+
+  const assign = (type: "volunteer" | "coordinator", id: string) => {
+    const patch = type === "volunteer"
+      ? { volunteerId: id, coordinatorId: null, status: "Assigned" as const }
+      : { coordinatorId: id, volunteerId: null, status: "Assigned" as const };
+    updateTask.mutate(
+      { taskId, data: patch },
+      {
+        onSuccess: () => { setOpen(false); toast.success("Assignee set"); onAssigned(); },
+        onError: () => toast.error("Failed to assign"),
+      }
+    );
+  };
+
+  const unassign = () => {
+    updateTask.mutate(
+      { taskId, data: { volunteerId: null, coordinatorId: null, status: "Open" as const } },
+      {
+        onSuccess: () => { toast.success("Assignee removed"); onAssigned(); },
+        onError: () => toast.error("Failed to unassign"),
+      }
+    );
+  };
+
+  if (isAssigned) {
+    return (
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
+          {currentVolunteer ? (
+            <><Users className="h-3.5 w-3.5 text-slate-400" />{assigneeName}{currentVolunteer?.hasVehicle && <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200 ml-1">Vehicle</Badge>}</>
+          ) : (
+            <><Shield className="h-3.5 w-3.5 text-blue-500" />{assigneeName}<Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200 ml-1">{currentCoordinator?.role}</Badge></>
+          )}
+        </div>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-red-500" onClick={unassign}>
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  const availableVols = (volunteers as any[]).filter((v: any) => v.availabilityStatus === "Available");
+  const coordinators = (members as Member[]).filter((m) => m.role === "Admin" || m.role === "Coordinator");
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+          <Users className="h-3.5 w-3.5" /> Assign person…
+          <ChevronsUpDown className="h-3 w-3 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search name…" />
+          <CommandList className="max-h-64">
+            <CommandEmpty>No match found.</CommandEmpty>
+            {availableVols.length > 0 && (
+              <CommandGroup heading="Volunteers (Available)">
+                {availableVols.map((v: any) => (
+                  <CommandItem key={v.id} value={`vol-${v.fullName}`} onSelect={() => assign("volunteer", v.id)} className="gap-2">
+                    <Users className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    <span className="flex-1 truncate">{v.fullName}</span>
+                    {v.hasVehicle && <Car className="h-3.5 w-3.5 text-blue-500" />}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {coordinators.length > 0 && (
+              <CommandGroup heading="Coordinators & Admins">
+                {coordinators.map((m) => (
+                  <CommandItem key={m.id} value={`coord-${m.fullName ?? m.email}`} onSelect={() => assign("coordinator", m.id)} className="gap-2">
+                    {m.role === "Admin" ? <Crown className="h-3.5 w-3.5 text-orange-500 shrink-0" /> : <Shield className="h-3.5 w-3.5 text-blue-500 shrink-0" />}
+                    <span className="flex-1 truncate">{m.fullName ?? m.email}</span>
+                    <Badge variant="outline" className="text-[10px] px-1">{m.role}</Badge>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function TransferDetail() {
   const { transferId } = useParams<{ transferId: string }>();
   const queryClient = useQueryClient();
@@ -26,13 +154,9 @@ export default function TransferDetail() {
   const { data: transfer, isLoading } = useGetTransfer(transferId, {
     query: { enabled: !!transferId, queryKey: getGetTransferQueryKey(transferId) },
   });
-  const { data: volunteers } = useListVolunteers(undefined, {
-    query: { queryKey: getListVolunteersQueryKey() },
-  });
 
   const updateTransfer = useUpdateTransfer();
   const createTask = useCreateTask();
-  const updateTask = useUpdateTask();
 
   const handleStatusChange = (status: string) => {
     const isDispatching = status === "Dispatched" && (transfer as any)?.status !== "Dispatched";
@@ -49,19 +173,6 @@ export default function TransferDetail() {
     );
   };
 
-  const handleAssignVolunteer = (taskId: string, volunteerId: string) => {
-    updateTask.mutate(
-      { taskId, data: { volunteerId, status: "Assigned" } },
-      {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: getGetTransferQueryKey(transferId) });
-          toast.success("Volunteer assigned");
-        },
-        onError: () => toast.error("Failed to assign volunteer"),
-      }
-    );
-  };
-
   const handleAddTask = (type: string) => {
     createTask.mutate(
       { data: { transferId, type: type as any } },
@@ -74,6 +185,8 @@ export default function TransferDetail() {
       }
     );
   };
+
+  const refreshTransfer = () => queryClient.invalidateQueries({ queryKey: getGetTransferQueryKey(transferId) });
 
   if (isLoading) {
     return (
@@ -98,7 +211,6 @@ export default function TransferDetail() {
   }
 
   const t = transfer as any;
-  const availableVols = (volunteers ?? [] as any[]).filter((v: any) => v.availabilityStatus === "Available");
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -195,38 +307,26 @@ export default function TransferDetail() {
             {(t.tasks ?? []).length === 0 ? (
               <div className="p-8 text-center text-slate-500">
                 <Users className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                <p>No tasks yet. Add pickup or delivery tasks.</p>
+                <p>No tasks yet. Add pickup or delivery tasks above.</p>
               </div>
             ) : (
               <div className="divide-y divide-slate-100">
                 {(t.tasks ?? []).map((task: any) => (
-                  <div key={task.id} className="px-6 py-3 space-y-2" data-testid={`row-task-${task.id}`}>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs bg-slate-100 text-slate-700">{task.type}</Badge>
-                        <Badge variant="outline" className={`text-xs ${task.status === "Done" ? "bg-emerald-100 text-emerald-700" : task.status === "In Progress" ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-600"}`}>{task.status}</Badge>
-                      </div>
+                  <div key={task.id} className="px-6 py-3 space-y-2.5" data-testid={`row-task-${task.id}`}>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs bg-slate-100 text-slate-700">{task.type}</Badge>
+                      <Badge variant="outline" className={`text-xs ${task.status === "Done" ? "bg-emerald-100 text-emerald-700" : task.status === "In Progress" ? "bg-blue-100 text-blue-700" : task.status === "Assigned" ? "bg-purple-100 text-purple-700" : "bg-slate-100 text-slate-600"}`}>
+                        {task.status}
+                      </Badge>
                     </div>
-                    {!task.volunteerId ? (
-                      <Select onValueChange={(v) => handleAssignVolunteer(task.id, v)}>
-                        <SelectTrigger className="h-8 text-xs" data-testid={`select-volunteer-${task.id}`}>
-                          <SelectValue placeholder="Assign volunteer…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableVols.map((v: any) => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {v.fullName}{v.hasVehicle ? " (vehicle)" : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <p className="text-sm text-slate-700 flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-slate-400" />
-                        {task.volunteer?.fullName ?? task.volunteerId}
-                        {task.volunteer?.hasVehicle && <Badge variant="outline" className="text-xs bg-blue-50 text-blue-600 border-blue-200">Vehicle</Badge>}
-                      </p>
-                    )}
+                    <AssigneePicker
+                      taskId={task.id}
+                      currentVolunteerId={task.volunteerId}
+                      currentCoordinatorId={task.coordinatorId}
+                      currentVolunteer={task.volunteer}
+                      currentCoordinator={task.coordinator}
+                      onAssigned={refreshTransfer}
+                    />
                   </div>
                 ))}
               </div>

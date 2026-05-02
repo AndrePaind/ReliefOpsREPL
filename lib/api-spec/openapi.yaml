@@ -568,6 +568,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Volunteer"
+    delete:
+      operationId: deleteVolunteer
+      tags: [volunteers]
+      summary: Delete a volunteer
+      parameters:
+        - name: volunteerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Volunteer deleted
 
   # ─── Tasks ───────────────────────────────────────────────────────────────────
   /tasks:
@@ -1241,6 +1254,22 @@ components:
         volunteer:
           $ref: "#/components/schemas/Volunteer"
           nullable: true
+        coordinatorId:
+          type: string
+          nullable: true
+        coordinator:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: string
+            fullName:
+              type: string
+              nullable: true
+            email:
+              type: string
+            role:
+              type: string
         type:
           type: string
           enum: [Pickup, "Delivery/Transfer", "Stock Count"]
@@ -1288,6 +1317,10 @@ components:
       properties:
         volunteerId:
           type: string
+          nullable: true
+        coordinatorId:
+          type: string
+          nullable: true
         status:
           type: string
           enum: [Open, Assigned, "In Progress", Done]
