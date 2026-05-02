@@ -663,6 +663,202 @@ async function seed() {
   }
   console.log("  Added 5 Syria demo team members");
   console.log("Seed complete! MSF Syria invite code: SYRIA1");
+
+  // ════════════════════════════════════════════════════════════════════════════
+  // MISSION 3 — IRC Yemen  (invite: YEMEN1, admin: andrea.paindelli@gmail.com)
+  // ════════════════════════════════════════════════════════════════════════════
+  console.log("\nSeeding IRC Yemen demo data…");
+
+  const YEMEN_ORG_NAME = "IRC Yemen";
+  let [yemenOrg] = await db.select().from(organizationsTable).then((rows) => rows.filter((r) => r.name === YEMEN_ORG_NAME));
+  if (!yemenOrg) {
+    [yemenOrg] = await db.insert(organizationsTable).values({
+      name: YEMEN_ORG_NAME,
+      description: "International Rescue Committee — Yemen emergency response and logistics",
+      inviteCode: "YEMEN1",
+      createdBy: "seed",
+    }).returning();
+    console.log("  Created org: IRC Yemen (invite: YEMEN1)");
+  }
+
+  // Pre-assign Andrea as Admin via pending invite — claimed automatically on first join
+  const andreaEmail = "andrea.paindelli@gmail.com";
+  const andreaExists = await db.select().from(orgMembersTable)
+    .then((rows) => rows.find((r) => r.orgId === yemenOrg.id && r.email === andreaEmail));
+  if (!andreaExists) {
+    await db.insert(orgMembersTable).values({
+      orgId: yemenOrg.id,
+      userId: `pending:${andreaEmail}`,
+      email: andreaEmail,
+      fullName: "Andrea Paindelli",
+      role: "Admin",
+    });
+    console.log("  Pre-assigned andrea.paindelli@gmail.com as Admin");
+  }
+
+  // ── Yemen Hubs ─────────────────────────────────────────────────────────────
+  const yemenHubDefs = [
+    {
+      name: "Sana'a Coordination Centre",
+      address: "Hadda District, Sana'a, Yemen",
+      lat: 15.3694, lng: 44.1910,
+      imageUrl: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80",
+    },
+    {
+      name: "Aden Port Distribution Hub",
+      address: "Tawahi District, Aden, Yemen",
+      lat: 12.7797, lng: 44.9941,
+      imageUrl: "https://images.unsplash.com/photo-1559827291-72ee739d0d9a?w=800&q=80",
+    },
+    {
+      name: "Marib Field Base",
+      address: "Marib City, Marib Governorate, Yemen",
+      lat: 15.4693, lng: 45.3200,
+      imageUrl: "https://images.unsplash.com/photo-1469041797191-50ace28483c3?w=800&q=80",
+    },
+    {
+      name: "Hodeidah Relief Point",
+      address: "Al-Hawak District, Hodeidah, Yemen",
+      lat: 14.7978, lng: 42.9511,
+      imageUrl: "https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800&q=80",
+    },
+  ];
+
+  const yemenHubs: typeof hubsTable.$inferSelect[] = [];
+  for (const def of yemenHubDefs) {
+    let [hub] = await db.select().from(hubsTable).then((rows) => rows.filter((r) => r.name === def.name && r.orgId === yemenOrg.id));
+    if (!hub) [hub] = await db.insert(hubsTable).values({ ...def, orgId: yemenOrg.id }).returning();
+    yemenHubs.push(hub);
+  }
+  const yHub = (name: string) => yemenHubs.find((h) => h.name === name)!;
+  const ysana = yHub("Sana'a Coordination Centre");
+  const yaden = yHub("Aden Port Distribution Hub");
+  const ymarib = yHub("Marib Field Base");
+  const yhode = yHub("Hodeidah Relief Point");
+
+  // ── Yemen Stock ────────────────────────────────────────────────────────────
+  const yExpIn50 = new Date(Date.now() + 50 * 86400000).toISOString().slice(0, 10);
+  const yExpIn12 = new Date(Date.now() + 12 * 86400000).toISOString().slice(0, 10);
+  const yExpIn5  = new Date(Date.now() + 5  * 86400000).toISOString().slice(0, 10);
+
+  const yemenStockDefs: Array<{ hub: typeof ysana; itemName: string; quantity: number; expiry?: string }> = [
+    { hub: ysana,  itemName: "Amoxicillin 500mg",        quantity: 250, expiry: yExpIn50 },
+    { hub: ysana,  itemName: "Oral Rehydration Salts",   quantity: 600 },
+    { hub: ysana,  itemName: "Insulin (10ml vial)",      quantity: 30,  expiry: yExpIn12 },
+    { hub: ysana,  itemName: "Rice (5kg bag)",            quantity: 800 },
+    { hub: ysana,  itemName: "High-Energy Biscuits",      quantity: 400, expiry: yExpIn50 },
+    { hub: ysana,  itemName: "Bottled Water (1.5L)",      quantity: 2000 },
+    { hub: ysana,  itemName: "Hygiene Kit",               quantity: 200 },
+    { hub: ysana,  itemName: "Thermal Blankets",          quantity: 300 },
+    { hub: yaden,  itemName: "Rice (5kg bag)",            quantity: 1500 },
+    { hub: yaden,  itemName: "Canned Lentils",            quantity: 900 },
+    { hub: yaden,  itemName: "Water Purification Tablets",quantity: 800 },
+    { hub: yaden,  itemName: "Soap (bar)",                quantity: 600 },
+    { hub: yaden,  itemName: "Trauma First Aid Kit",      quantity: 40,  expiry: yExpIn50 },
+    { hub: yaden,  itemName: "Thermal Blankets",          quantity: 400 },
+    { hub: ymarib, itemName: "Amoxicillin 500mg",        quantity: 18,  expiry: yExpIn50 },
+    { hub: ymarib, itemName: "Oral Rehydration Salts",   quantity: 50 },
+    { hub: ymarib, itemName: "Sterile Bandages",          quantity: 6,   expiry: yExpIn5  },
+    { hub: ymarib, itemName: "Rice (5kg bag)",            quantity: 70 },
+    { hub: ymarib, itemName: "High-Energy Biscuits",      quantity: 8,   expiry: yExpIn12 },
+    { hub: ymarib, itemName: "Bottled Water (1.5L)",      quantity: 120 },
+    { hub: yhode,  itemName: "Oral Rehydration Salts",   quantity: 300 },
+    { hub: yhode,  itemName: "Rice (5kg bag)",            quantity: 400 },
+    { hub: yhode,  itemName: "Soap (bar)",                quantity: 350 },
+    { hub: yhode,  itemName: "Sanitary Pads",             quantity: 150 },
+    { hub: yhode,  itemName: "Cholera Treatment Kit",    quantity: 15,  expiry: yExpIn50 },
+    { hub: yhode,  itemName: "Thermal Blankets",          quantity: 180 },
+  ];
+
+  for (const s of yemenStockDefs) {
+    if (!s.hub) continue;
+    const item = insertedItems.find((i) => i.name === s.itemName);
+    if (!item) continue;
+    const exists = await db.select().from(hubStockTable)
+      .then((rows) => rows.find((r) => r.hubId === s.hub.id && r.itemId === item.id));
+    if (exists) continue;
+    await db.insert(hubStockTable).values({ hubId: s.hub.id, itemId: item.id, quantity: s.quantity, expiryDate: s.expiry ?? null });
+  }
+
+  // ── Yemen Volunteers ───────────────────────────────────────────────────────
+  const yemenVolDefs = [
+    { fullName: "Hana Al-Qurashi",  email: "hana.y@example.com",  lat: 15.37, lng: 44.19, hasVehicle: true,  availabilityStatus: "Available" },
+    { fullName: "Bilal Mansouri",   email: "bilal.y@example.com", lat: 12.78, lng: 44.99, hasVehicle: true,  availabilityStatus: "Available" },
+    { fullName: "Leila Saeed",      email: "leila.y@example.com", lat: 15.47, lng: 45.32, hasVehicle: false, availabilityStatus: "Busy"      },
+    { fullName: "Rashid Al-Hamdi",  email: "rashid.y@example.com",lat: 14.80, lng: 42.95, hasVehicle: true,  availabilityStatus: "Available" },
+    { fullName: "Mona Taher",       email: "mona.y@example.com",  lat: 15.38, lng: 44.20, hasVehicle: false, availabilityStatus: "Offline"   },
+  ] as const;
+
+  for (const v of yemenVolDefs) {
+    const exists = await db.select().from(volunteersTable)
+      .then((rows) => rows.find((r) => r.email === v.email && r.orgId === yemenOrg.id));
+    if (!exists) await db.insert(volunteersTable).values({ ...v, orgId: yemenOrg.id } as any);
+  }
+
+  // ── Yemen Requests ─────────────────────────────────────────────────────────
+  const yReq1Exists = await db.select().from(requestsTable)
+    .then((rows) => rows.find((r) => r.requestingHubId === ymarib.id && r.orgId === yemenOrg.id));
+  if (!yReq1Exists) {
+    const [yr1] = await db.insert(requestsTable).values({
+      orgId: yemenOrg.id, requestingHubId: ymarib.id, priority: "Critical", status: "Open",
+      notes: "Marib field base critically low on food and medicine. 3,000 IDPs in nearby camps.",
+    }).returning();
+    await db.insert(requestItemsTable).values([
+      { requestId: yr1.id, itemId: itemByName("Amoxicillin 500mg").id,   quantityNeeded: 150 },
+      { requestId: yr1.id, itemId: itemByName("Rice (5kg bag)").id,       quantityNeeded: 300 },
+      { requestId: yr1.id, itemId: itemByName("High-Energy Biscuits").id, quantityNeeded: 200 },
+    ]);
+  }
+
+  const yReq2Exists = await db.select().from(requestsTable)
+    .then((rows) => rows.find((r) => r.requestingHubId === yhode.id && r.orgId === yemenOrg.id));
+  if (!yReq2Exists) {
+    const [yr2] = await db.insert(requestsTable).values({
+      orgId: yemenOrg.id, requestingHubId: yhode.id, priority: "Urgent", status: "Draft",
+      notes: "Hodeidah port area cholera alert. Need treatment kits and ORS urgently.",
+    }).returning();
+    await db.insert(requestItemsTable).values([
+      { requestId: yr2.id, itemId: itemByName("Cholera Treatment Kit").id,    quantityNeeded: 30 },
+      { requestId: yr2.id, itemId: itemByName("Oral Rehydration Salts").id,   quantityNeeded: 400 },
+      { requestId: yr2.id, itemId: itemByName("Water Purification Tablets").id, quantityNeeded: 300 },
+    ]);
+  }
+
+  // ── Yemen Board Posts ──────────────────────────────────────────────────────
+  const yPostCount = await db.select().from(boardPostsTable)
+    .then((rows) => rows.filter((r) => r.orgId === yemenOrg.id).length);
+  if (yPostCount === 0) {
+    await db.insert(boardPostsTable).values([
+      {
+        orgId: yemenOrg.id, orgName: yemenOrg.name, type: "Need",
+        title: "Urgent: cholera treatment kits needed at Hodeidah port",
+        content: "Cholera cases rising near Hodeidah. We need treatment kits and ORS immediately. Any NGO with surplus please contact IRC Yemen.",
+        itemName: "Cholera Treatment Kit", quantity: 30,
+        location: "Hodeidah Relief Point, Yemen", status: "Active", createdBy: "seed",
+      },
+      {
+        orgId: yemenOrg.id, orgName: yemenOrg.name, type: "Availability",
+        title: "Surplus food stocks at Aden — available for transfer north",
+        content: "Aden hub has received a large sea shipment. 500 rice bags and 200 lentil cans available. We can arrange truck convoy to Sana'a or Marib.",
+        itemName: "Rice (5kg bag)", quantity: 500,
+        location: "Aden Port Distribution Hub, Yemen", status: "Active", createdBy: "seed",
+      },
+    ]);
+  }
+
+  // ── Yemen Demo Team Members ────────────────────────────────────────────────
+  const yemenDemoMembers = [
+    { userId: "demo:carlos.garcia",  email: "c.garcia@rescue.org",  fullName: "Carlos García",   role: "Coordinator" as const },
+    { userId: "demo:priya.nair",     email: "p.nair@rescue.org",    fullName: "Priya Nair",      role: "Coordinator" as const },
+    { userId: "demo:jean.dupont",    email: "j.dupont@rescue.org",  fullName: "Jean Dupont",     role: "Viewer"      as const },
+  ];
+  for (const m of yemenDemoMembers) {
+    const exists = await db.select().from(orgMembersTable)
+      .then((rows) => rows.find((r) => r.userId === m.userId && r.orgId === yemenOrg.id));
+    if (!exists) await db.insert(orgMembersTable).values({ ...m, orgId: yemenOrg.id });
+  }
+  console.log("  Added Yemen demo team members");
+  console.log("Seed complete! IRC Yemen invite code: YEMEN1 | Admin: andrea.paindelli@gmail.com");
 }
 
 seed().catch((e) => { console.error(e); process.exit(1); });

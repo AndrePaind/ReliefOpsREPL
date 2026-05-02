@@ -11,7 +11,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { MapPin, Package, Scan, Upload, ArrowLeft, AlertTriangle, Trash2, Calendar } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { MapPin, Package, Scan, Upload, ArrowLeft, AlertTriangle, Trash2, Calendar, Pencil, Check, X } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { StockUpload } from "@/components/StockUpload";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,6 +34,12 @@ function ExpiryWarning({ expiryDate }: { expiryDate: string | null | undefined }
   );
 }
 
+interface EditingRow {
+  stockId: string;
+  quantity: string;
+  expiryDate: string;
+}
+
 export default function HubDetail() {
   const { hubId } = useParams<{ hubId: string }>();
   const queryClient = useQueryClient();
@@ -39,6 +47,7 @@ export default function HubDetail() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [addStockOpen, setAddStockOpen] = useState(false);
   const [scannedBarcode, setScannedBarcode] = useState<string | null>(null);
+  const [editingRow, setEditingRow] = useState<EditingRow | null>(null);
 
   const { data: hub, isLoading: hubLoading } = useGetHub(hubId, {
     query: { enabled: !!hubId, queryKey: getGetHubQueryKey(hubId) },
@@ -48,6 +57,7 @@ export default function HubDetail() {
   });
 
   const deleteStock = useDeleteStockEntry();
+  const updateStock = useUpdateStockEntry();
 
   const handleDeleteStock = async (stockId: string) => {
     deleteStock.mutate(
@@ -58,6 +68,38 @@ export default function HubDetail() {
           toast.success("Stock entry removed");
         },
         onError: () => toast.error("Failed to delete stock entry"),
+      }
+    );
+  };
+
+  const startEdit = (entry: { id: string; quantity: number; expiryDate?: string | null }) => {
+    setEditingRow({
+      stockId: entry.id,
+      quantity: String(entry.quantity),
+      expiryDate: entry.expiryDate ? (entry.expiryDate as string).slice(0, 10) : "",
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editingRow) return;
+    const qty = parseInt(editingRow.quantity, 10);
+    if (isNaN(qty) || qty < 0) { toast.error("Quantity must be a non-negative number"); return; }
+    updateStock.mutate(
+      {
+        hubId,
+        stockId: editingRow.stockId,
+        data: {
+          quantity: qty,
+          expiryDate: editingRow.expiryDate || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: getGetHubStockQueryKey(hubId) });
+          toast.success("Stock updated");
+          setEditingRow(null);
+        },
+        onError: () => toast.error("Failed to update stock"),
       }
     );
   };
@@ -96,8 +138,7 @@ export default function HubDetail() {
   const lowStockCount = stockList.filter((s) => s.quantity < 10 && s.quantity > 0).length;
   const expiryWarningCount = stockList.filter((s) => {
     if (!s.expiryDate) return false;
-    const days = differenceInDays(parseISO(s.expiryDate as string), new Date());
-    return days <= 30;
+    return differenceInDays(parseISO(s.expiryDate as string), new Date()) <= 30;
   }).length;
 
   const categoryColors: Record<string, string> = {
@@ -128,42 +169,36 @@ export default function HubDetail() {
           <div className="flex flex-wrap gap-2">
             <Dialog open={scanOpen} onOpenChange={setScanOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2" data-testid="button-scan-barcode">
+                <Button variant="outline" className="gap-2">
                   <Scan className="h-4 w-4" /> Scan Item
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Scan Barcode</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>Scan Barcode</DialogTitle></DialogHeader>
                 <BarcodeScanner onResult={handleScanResult} />
               </DialogContent>
             </Dialog>
 
             <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
               <DialogTrigger asChild>
-                <Button variant="outline" className="gap-2" data-testid="button-csv-import-open">
+                <Button variant="outline" className="gap-2">
                   <Upload className="h-4 w-4" /> Import CSV
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Import Stock from CSV</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>Import Stock from CSV</DialogTitle></DialogHeader>
                 <StockUpload hubId={hubId} onSuccess={() => setUploadOpen(false)} />
               </DialogContent>
             </Dialog>
 
             <Dialog open={addStockOpen} onOpenChange={setAddStockOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2" data-testid="button-add-stock">
+                <Button className="gap-2">
                   <Package className="h-4 w-4" /> Add Stock
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Add / Update Stock</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle>Add / Update Stock</DialogTitle></DialogHeader>
                 <AddStockDialog
                   hubId={hubId}
                   prefilledBarcode={scannedBarcode ?? undefined}
@@ -189,7 +224,7 @@ export default function HubDetail() {
         </Card>
         <Card className={`shadow-sm border ${lowStockCount > 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className={`text-sm font-semibold ${lowStockCount > 0 ? "text-red-700" : "text-slate-600"}`}>Low Stock Items</CardTitle>
+            <CardTitle className={`text-sm font-semibold ${lowStockCount > 0 ? "text-red-700" : "text-slate-600"}`}>Low Stock</CardTitle>
             <AlertTriangle className={`h-4 w-4 ${lowStockCount > 0 ? "text-red-500" : "text-slate-400"}`} />
           </CardHeader>
           <CardContent>
@@ -229,15 +264,71 @@ export default function HubDetail() {
                     <th className="px-6 py-3 text-left font-semibold">Item</th>
                     <th className="px-6 py-3 text-left font-semibold">Category</th>
                     <th className="px-6 py-3 text-right font-semibold">Quantity</th>
-                    <th className="px-6 py-3 text-left font-semibold">Expiry</th>
+                    <th className="px-6 py-3 text-left font-semibold">Expiry Date</th>
                     <th className="px-6 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {stockList.map((entry) => {
                     const isLow = entry.quantity < 10;
+                    const isEditing = editingRow?.stockId === entry.id;
+
+                    if (isEditing) {
+                      return (
+                        <tr key={entry.id} className="bg-orange-50/60">
+                          <td className="px-6 py-3">
+                            <div className="font-medium text-slate-900">{entry.item?.name ?? "Unknown"}</div>
+                            {entry.item?.barcode && <div className="text-xs text-slate-400 font-mono">{entry.item.barcode}</div>}
+                          </td>
+                          <td className="px-6 py-3">
+                            <Badge variant="outline" className={`text-xs ${categoryColors[entry.item?.category ?? ""] ?? "bg-slate-100 text-slate-600"}`}>
+                              {entry.item?.category}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-3 text-right">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={editingRow.quantity}
+                              onChange={(e) => setEditingRow({ ...editingRow, quantity: e.target.value })}
+                              className="w-24 ml-auto text-right h-8 text-sm"
+                            />
+                          </td>
+                          <td className="px-6 py-3">
+                            <Input
+                              type="date"
+                              value={editingRow.expiryDate}
+                              onChange={(e) => setEditingRow({ ...editingRow, expiryDate: e.target.value })}
+                              className="w-36 h-8 text-sm"
+                            />
+                          </td>
+                          <td className="px-6 py-3 text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-emerald-600 hover:bg-emerald-50"
+                                onClick={saveEdit}
+                                disabled={updateStock.isPending}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-400 hover:bg-slate-100"
+                                onClick={() => setEditingRow(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }
+
                     return (
-                      <tr key={entry.id} className={`hover:bg-slate-50 transition-colors ${isLow ? "bg-red-50/50" : ""}`} data-testid={`row-stock-${entry.id}`}>
+                      <tr key={entry.id} className={`hover:bg-slate-50 transition-colors ${isLow ? "bg-red-50/50" : ""}`}>
                         <td className="px-6 py-3">
                           <div className="font-medium text-slate-900">{entry.item?.name ?? "Unknown"}</div>
                           {entry.item?.barcode && <div className="text-xs text-slate-400 font-mono">{entry.item.barcode}</div>}
@@ -263,15 +354,26 @@ export default function HubDetail() {
                           )}
                         </td>
                         <td className="px-6 py-3 text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
-                            onClick={() => handleDeleteStock(entry.id)}
-                            data-testid={`button-delete-stock-${entry.id}`}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-primary hover:bg-orange-50"
+                              onClick={() => startEdit(entry)}
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => handleDeleteStock(entry.id)}
+                              title="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     );

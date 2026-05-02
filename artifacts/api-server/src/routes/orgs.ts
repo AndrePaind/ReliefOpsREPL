@@ -55,12 +55,27 @@ router.post("/join", requireAuth, async (req, res) => {
   const [org] = await db.select().from(organizationsTable).where(eq(organizationsTable.inviteCode, inviteCode as string));
   if (!org) { res.status(404).json({ error: "Invalid invite code" }); return; }
 
-  // Check not already a member of THIS org
+  // Check not already a real member of THIS org
   const [existing] = await db.select().from(orgMembersTable)
     .where(and(eq(orgMembersTable.userId, userId), eq(orgMembersTable.orgId, org.id)));
   if (existing) { res.status(409).json({ error: "You are already a member of this organization" }); return; }
 
-  await db.insert(orgMembersTable).values({ orgId: org.id, userId, email: userEmail ?? "", fullName: userFullName ?? null, role: "Coordinator" });
+  // Check if there is a pending invite for this email — if so, claim it (preserves the pre-assigned role)
+  const email = (userEmail ?? "") as string;
+  if (email) {
+    const [pendingInvite] = await db.select().from(orgMembersTable)
+      .where(and(eq(orgMembersTable.orgId, org.id), eq(orgMembersTable.userId, `pending:${email}`)));
+    if (pendingInvite) {
+      const [claimed] = await db.update(orgMembersTable)
+        .set({ userId, fullName: userFullName || pendingInvite.fullName, email })
+        .where(eq(orgMembersTable.id, pendingInvite.id))
+        .returning();
+      res.status(201).json({ ...org, myRole: claimed.role });
+      return;
+    }
+  }
+
+  await db.insert(orgMembersTable).values({ orgId: org.id, userId, email, fullName: userFullName ?? null, role: "Coordinator" });
   res.status(201).json({ ...org, myRole: "Coordinator" });
 });
 
