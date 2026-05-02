@@ -11,6 +11,7 @@ export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 export const requestsTable = pgTable("requests", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  orgId: text("org_id"),
   requestingHubId: text("requesting_hub_id").notNull().references(() => hubsTable.id),
   priority: text("priority").notNull().$type<RequestPriority>(),
   status: text("status").notNull().default("Draft").$type<RequestStatus>(),

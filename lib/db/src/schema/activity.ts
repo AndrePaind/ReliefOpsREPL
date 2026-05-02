@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const activityLogTable = pgTable("activity_log", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  orgId: text("org_id"),
   actorId: text("actor_id"),
   entityType: text("entity_type").notNull(),
   entityId: text("entity_id").notNull(),

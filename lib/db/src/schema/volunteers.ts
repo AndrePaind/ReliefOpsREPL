@@ -12,7 +12,10 @@ export type TaskStatus = (typeof TASK_STATUSES)[number];
 
 export const volunteersTable = pgTable("volunteers", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  orgId: text("org_id"),
   fullName: text("full_name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
   lat: doublePrecision("lat"),
   lng: doublePrecision("lng"),
   hasVehicle: boolean("has_vehicle").notNull().default(false),
@@ -22,6 +25,7 @@ export const volunteersTable = pgTable("volunteers", {
 
 export const tasksTable = pgTable("tasks", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  orgId: text("org_id"),
   transferId: text("transfer_id").references(() => transfersTable.id, { onDelete: "cascade" }),
   volunteerId: text("volunteer_id").references(() => volunteersTable.id, { onDelete: "set null" }),
   type: text("type").notNull().$type<TaskType>(),

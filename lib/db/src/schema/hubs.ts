@@ -4,6 +4,7 @@ import { z } from "zod/v4";
 
 export const hubsTable = pgTable("hubs", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  orgId: text("org_id"),
   name: text("name").notNull(),
   address: text("address"),
   lat: doublePrecision("lat"),

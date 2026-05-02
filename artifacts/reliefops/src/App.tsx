@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from '@clerk/react';
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useAuth } from '@clerk/react';
 import { publishableKeyFromHost } from '@clerk/react/internal';
 import { shadcn } from '@clerk/themes';
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from 'wouter';
@@ -7,6 +7,7 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "sonner";
 import { Layout } from "@/components/layout/Layout";
+import { OrgProvider, useOrg } from "@/context/OrgContext";
 
 // Pages
 import Landing from "@/pages/Landing";
@@ -20,6 +21,9 @@ import TransferList from "@/pages/TransferList";
 import TransferDetail from "@/pages/TransferDetail";
 import VolunteerList from "@/pages/VolunteerList";
 import ActivityLog from "@/pages/ActivityLog";
+import Onboarding from "@/pages/Onboarding";
+import TeamManagement from "@/pages/TeamManagement";
+import SharedBoard from "@/pages/SharedBoard";
 import NotFound from "@/pages/not-found";
 
 const clerkPubKey = publishableKeyFromHost(
@@ -72,19 +76,10 @@ const clerkAppearance = {
     footerActionLink: "text-primary hover:text-primary/90 font-semibold",
     footerActionText: "text-slate-500",
     dividerText: "text-slate-500",
-    identityPreviewEditButton: "text-primary hover:text-primary/90",
-    formFieldSuccessText: "text-emerald-600",
-    alertText: "text-slate-800",
-    logoBox: "h-12 flex justify-center mb-4",
-    logoImage: "h-12 w-auto",
-    socialButtonsBlockButton: "border-slate-200 hover:bg-slate-50 transition-colors",
     formButtonPrimary: "bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm transition-all",
-    formFieldInput: "border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary text-slate-900 placeholder:text-slate-400",
+    formFieldInput: "border-slate-200 focus:border-primary focus:ring-1 focus:ring-primary",
     footerAction: "border-t border-slate-100 bg-slate-50 p-4",
     dividerLine: "bg-slate-200",
-    alert: "border-slate-200 bg-slate-50",
-    otpCodeFieldInput: "border-slate-200 focus:border-primary focus:ring-primary",
-    formFieldRow: "mb-4",
     main: "p-6 sm:p-8",
   },
 };
@@ -115,10 +110,7 @@ function ClerkQueryClientCacheInvalidator() {
   useEffect(() => {
     const unsubscribe = addListener(({ user }) => {
       const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
+      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
         qc.clear();
       }
       prevUserIdRef.current = userId;
@@ -132,28 +124,33 @@ function ClerkQueryClientCacheInvalidator() {
 function HomeRedirect() {
   return (
     <>
-      <Show when="signed-in">
-        <Redirect to="/dashboard" />
-      </Show>
-      <Show when="signed-out">
-        <Landing />
-      </Show>
+      <Show when="signed-in"><Redirect to="/dashboard" /></Show>
+      <Show when="signed-out"><Landing /></Show>
     </>
   );
 }
 
+/** Gates any authenticated route: if user has no org, shows onboarding. */
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isSignedIn } = useAuth();
+  const { org, isLoading } = useOrg();
+
+  if (!isSignedIn) return <Redirect to="/" />;
+
+  // While checking org status, show nothing (avoids flash)
+  if (isLoading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+
+  // No org yet — show onboarding
+  if (!org) return <Onboarding />;
+
   return (
-    <>
-      <Show when="signed-in">
-        <Layout>
-          <Component />
-        </Layout>
-      </Show>
-      <Show when="signed-out">
-        <Redirect to="/" />
-      </Show>
-    </>
+    <Layout>
+      <Component />
+    </Layout>
   );
 }
 
@@ -168,43 +165,37 @@ function ClerkProviderWithRoutes() {
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
       localization={{
-        signIn: {
-          start: {
-            title: "Welcome to ReliefOps",
-            subtitle: "Sign in to access the command center",
-          },
-        },
-        signUp: {
-          start: {
-            title: "Join ReliefOps",
-            subtitle: "Create an account to coordinate relief efforts",
-          },
-        },
+        signIn: { start: { title: "Welcome to ReliefOps", subtitle: "Sudan Crisis Logistics Command Center" } },
+        signUp: { start: { title: "Join ReliefOps", subtitle: "Coordinate relief efforts across Sudan" } },
       }}
       routerPush={(to) => setLocation(stripBase(to))}
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
-        <ClerkQueryClientCacheInvalidator />
-        <Toaster position="top-right" richColors closeButton />
-        <Switch>
-          <Route path="/" component={HomeRedirect} />
-          <Route path="/sign-in/*?" component={SignInPage} />
-          <Route path="/sign-up/*?" component={SignUpPage} />
+        <OrgProvider>
+          <ClerkQueryClientCacheInvalidator />
+          <Toaster position="top-right" richColors closeButton />
+          <Switch>
+            <Route path="/" component={HomeRedirect} />
+            <Route path="/sign-in/*?" component={SignInPage} />
+            <Route path="/sign-up/*?" component={SignUpPage} />
 
-          <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
-          <Route path="/hubs"><ProtectedRoute component={HubList} /></Route>
-          <Route path="/hubs/:hubId"><ProtectedRoute component={HubDetail} /></Route>
-          <Route path="/requests/new"><ProtectedRoute component={RequestCreate} /></Route>
-          <Route path="/requests/:requestId"><ProtectedRoute component={RequestDetail} /></Route>
-          <Route path="/requests"><ProtectedRoute component={RequestList} /></Route>
-          <Route path="/transfers/:transferId"><ProtectedRoute component={TransferDetail} /></Route>
-          <Route path="/transfers"><ProtectedRoute component={TransferList} /></Route>
-          <Route path="/volunteers"><ProtectedRoute component={VolunteerList} /></Route>
-          <Route path="/activity"><ProtectedRoute component={ActivityLog} /></Route>
+            <Route path="/dashboard"><ProtectedRoute component={Dashboard} /></Route>
+            <Route path="/hubs"><ProtectedRoute component={HubList} /></Route>
+            <Route path="/hubs/:hubId"><ProtectedRoute component={HubDetail} /></Route>
+            <Route path="/requests/new"><ProtectedRoute component={RequestCreate} /></Route>
+            <Route path="/requests/:requestId"><ProtectedRoute component={RequestDetail} /></Route>
+            <Route path="/requests"><ProtectedRoute component={RequestList} /></Route>
+            <Route path="/transfers/:transferId"><ProtectedRoute component={TransferDetail} /></Route>
+            <Route path="/transfers"><ProtectedRoute component={TransferList} /></Route>
+            <Route path="/volunteers"><ProtectedRoute component={VolunteerList} /></Route>
+            <Route path="/activity"><ProtectedRoute component={ActivityLog} /></Route>
+            <Route path="/board"><ProtectedRoute component={SharedBoard} /></Route>
+            <Route path="/team"><ProtectedRoute component={TeamManagement} /></Route>
 
-          <Route component={NotFound} />
-        </Switch>
+            <Route component={NotFound} />
+          </Switch>
+        </OrgProvider>
       </QueryClientProvider>
     </ClerkProvider>
   );

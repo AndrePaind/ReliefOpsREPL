@@ -10,6 +10,7 @@ export type TransferStatus = (typeof TRANSFER_STATUSES)[number];
 
 export const transfersTable = pgTable("transfers", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  orgId: text("org_id"),
   requestId: text("request_id").notNull().references(() => requestsTable.id, { onDelete: "cascade" }),
   fromHubId: text("from_hub_id").notNull().references(() => hubsTable.id),
   toHubId: text("to_hub_id").notNull().references(() => hubsTable.id),
