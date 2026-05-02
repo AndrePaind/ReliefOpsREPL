@@ -270,6 +270,37 @@ export default function HubDetail() {
           <EditHubDialog open={editHubOpen} onClose={() => setEditHubOpen(false)} hub={hub} />
         )}
 
+        {/* Delete hub confirmation dialog */}
+        <Dialog open={deleteHubOpen} onOpenChange={setDeleteHubOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                <OctagonAlert className="h-5 w-5" /> Delete Hub
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-1">
+              <p className="text-sm text-slate-700">
+                Are you sure you want to permanently delete{" "}
+                <span className="font-bold">{hub.name}</span>? This will also delete all stock records
+                associated with it. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setDeleteHubOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  disabled={deleteHubMutation.isPending}
+                  onClick={handleDeleteHub}
+                >
+                  {deleteHubMutation.isPending ? "Deleting…" : "Delete Hub"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">{hub.name}</h1>
@@ -282,6 +313,9 @@ export default function HubDetail() {
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" className="gap-2" onClick={() => setEditHubOpen(true)}>
               <Settings2 className="h-4 w-4" /> Edit Hub
+            </Button>
+            <Button variant="outline" className="gap-2 text-destructive hover:text-destructive hover:bg-red-50 hover:border-red-300" onClick={() => setDeleteHubOpen(true)}>
+              <Trash2 className="h-4 w-4" /> Delete Hub
             </Button>
             <Dialog open={scanOpen} onOpenChange={setScanOpen}>
               <DialogTrigger asChild>
